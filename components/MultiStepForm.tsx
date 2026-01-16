@@ -24,9 +24,8 @@ export function MultiStepForm() {
 
   const form = useForm<ContactForm>({
     resolver: zodResolver(contactFormSchema),
-    mode: 'onChange',
+    mode: 'onSubmit', // Only validate on submit to prevent premature file validation
     defaultValues: {
-      accountType: 'Regular Savings Account',
       honeypot: '', // Hidden honeypot field
     },
   });
@@ -60,15 +59,20 @@ export function MultiStepForm() {
       case 3:
         return ['spouseSurname', 'spouseOtherNames', 'spouseAddress'];
       case 4:
-        return ['idDocument', 'passportPhoto', 'signature', 'utilityBill'];
+        // Don't validate files during step navigation - only on final submit
+        return [];
       default:
         return [];
     }
   };
 
   const onSubmit = async (data: ContactForm) => {
+    // Log the form data
+    console.log('Form submitted with data:', data);
+
     if (data.honeypot) {
       // Honeypot filled - likely spam
+      console.log('Spam detected via honeypot');
       return;
     }
 
@@ -80,10 +84,13 @@ export function MultiStepForm() {
       Object.entries(data).forEach(([key, value]) => {
         if (value instanceof File) {
           formData.append(key, value);
+          console.log(`File uploaded: ${key} - ${value.name} (${value.size} bytes)`);
         } else if (value !== undefined && value !== null) {
           formData.append(key, String(value));
         }
       });
+
+      console.log('Sending form data to API...');
 
       const response = await fetch('/api/submit-form', {
         method: 'POST',
@@ -91,9 +98,11 @@ export function MultiStepForm() {
       });
 
       if (response.ok) {
+        console.log('Form submitted successfully');
         alert('Form submitted successfully!');
         // Reset form or redirect
       } else {
+        console.error('Form submission failed with status:', response.status);
         alert('Failed to submit form. Please try again.');
       }
     } catch (error) {
@@ -108,7 +117,7 @@ export function MultiStepForm() {
   const isLastStep = currentStep === steps.length - 1;
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
+    <div className="max-w-4xl mx-auto p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
       {/* Progress Indicator */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
@@ -122,7 +131,7 @@ export function MultiStepForm() {
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                   index <= currentStep
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-[#7B3434] text-white'
                     : 'bg-gray-200 text-gray-600'
                 }`}
               >
@@ -131,7 +140,7 @@ export function MultiStepForm() {
               {index < steps.length - 1 && (
                 <div
                   className={`flex-1 h-1 mx-4 ${
-                    index < currentStep ? 'bg-blue-600' : 'bg-gray-200'
+                    index < currentStep ? 'bg-[#7B3434]' : 'bg-gray-200'
                   }`}
                 />
               )}
@@ -156,12 +165,12 @@ export function MultiStepForm() {
         <CurrentStepComponent form={form} />
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between mt-8">
+        <div className="flex justify-between mt-10">
           <button
             type="button"
             onClick={prevStep}
             disabled={currentStep === 0}
-            className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-8 py-4 bg-[#ACD23C] text-gray-800 rounded-full hover:bg-[#9BB82A] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
           >
             Back
           </button>
@@ -170,7 +179,7 @@ export function MultiStepForm() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-8 py-4 bg-[#7B3434] text-white rounded-full hover:bg-[#6A2D2D] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
             >
               {isSubmitting ? 'Submitting...' : 'Submit'}
             </button>
@@ -178,7 +187,7 @@ export function MultiStepForm() {
             <button
               type="button"
               onClick={nextStep}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-8 py-4 bg-[#7B3434] text-white rounded-full hover:bg-[#6A2D2D] font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
             >
               Next
             </button>

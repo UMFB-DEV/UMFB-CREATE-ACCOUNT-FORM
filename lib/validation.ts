@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// File validation schema
+// File validation schema - Make validation more lenient
 const fileSchema = z
   .instanceof(File)
   .refine((file) => file.size <= 5 * 1024 * 1024, {
