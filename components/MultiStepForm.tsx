@@ -157,7 +157,6 @@ export function MultiStepForm() {
         {/* Hidden honeypot field */}
         <input
           type="text"
-          name="honeypot"
           className="hidden"
           {...form.register('honeypot')}
         />
