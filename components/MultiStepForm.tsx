@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { contactFormSchema, type ContactForm } from '@/lib/validation';
@@ -21,6 +21,31 @@ const steps = [
 export function MultiStepForm() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submissionCount, setSubmissionCount] = useState(0);
+  const [rateLimitMessage, setRateLimitMessage] = useState('');
+
+  // Rate limiting logic
+  useEffect(() => {
+    const now = Date.now();
+    const lastSubmission = localStorage.getItem('formLastSubmission');
+    const count = parseInt(localStorage.getItem('formSubmissionCount') || '0');
+
+    // Reset count if it's been more than 24 hours
+    if (lastSubmission && now - parseInt(lastSubmission) > 24 * 60 * 60 * 1000) {
+      localStorage.setItem('formSubmissionCount', '0');
+      setSubmissionCount(0);
+    } else {
+      setSubmissionCount(count);
+    }
+
+    // Check if rate limited
+    if (count >= 3) {
+      const timeUntilReset = 24 * 60 * 60 * 1000 - (now - parseInt(lastSubmission || '0'));
+      const hoursLeft = Math.ceil(timeUntilReset / (60 * 60 * 1000));
+      setRateLimitMessage(`You have reached the maximum number of submissions. Please try again in ${hoursLeft} hours.`);
+    }
+  }, []);
 
   const form = useForm<ContactForm>({
     resolver: zodResolver(contactFormSchema),
@@ -67,8 +92,28 @@ export function MultiStepForm() {
   };
 
   const onSubmit = async (data: ContactForm) => {
+    // Check rate limiting
+    if (submissionCount >= 3) {
+      alert('You have reached the maximum number of submissions. Please try again later.');
+      return;
+    }
+
     // Log the form data
     console.log('Form submitted with data:', data);
+
+    // Check file uploads specifically
+    const files = {
+      idDocument: data.idDocument,
+      passportPhoto: data.passportPhoto,
+      signature: data.signature,
+      utilityBill: data.utilityBill,
+    };
+    console.log('File uploads status:', {
+      idDocument: files.idDocument ? `${files.idDocument.name} (${files.idDocument.size} bytes)` : 'NOT SELECTED',
+      passportPhoto: files.passportPhoto ? `${files.passportPhoto.name} (${files.passportPhoto.size} bytes)` : 'NOT SELECTED',
+      signature: files.signature ? `${files.signature.name} (${files.signature.size} bytes)` : 'NOT SELECTED',
+      utilityBill: files.utilityBill ? `${files.utilityBill.name} (${files.utilityBill.size} bytes)` : 'NOT SELECTED',
+    });
 
     if (data.honeypot) {
       // Honeypot filled - likely spam
@@ -79,17 +124,21 @@ export function MultiStepForm() {
     setIsSubmitting(true);
     try {
       const formData = new FormData();
+      let fileCount = 0;
 
       // Add all form fields
+      console.log('Preparing FormData for submission...');
       Object.entries(data).forEach(([key, value]) => {
         if (value instanceof File) {
           formData.append(key, value);
-          console.log(`File uploaded: ${key} - ${value.name} (${value.size} bytes)`);
+          console.log(`Adding file to FormData: ${key} - ${value.name} (${value.size} bytes, type: ${value.type})`);
+          fileCount++;
         } else if (value !== undefined && value !== null) {
           formData.append(key, String(value));
         }
       });
 
+      console.log(`Total files added to FormData: ${fileCount}`);
       console.log('Sending form data to API...');
 
       const response = await fetch('/api/submit-form', {
@@ -99,8 +148,18 @@ export function MultiStepForm() {
 
       if (response.ok) {
         console.log('Form submitted successfully');
-        alert('Form submitted successfully!');
-        // Reset form or redirect
+
+        // Update submission count and timestamp
+        const newCount = submissionCount + 1;
+        localStorage.setItem('formSubmissionCount', newCount.toString());
+        localStorage.setItem('formLastSubmission', Date.now().toString());
+        setSubmissionCount(newCount);
+
+        // Hide form after successful submission
+        setIsSubmitted(true);
+
+        // Optional: Reset form for new submissions (but keep hidden)
+        // form.reset();
       } else {
         console.error('Form submission failed with status:', response.status);
         alert('Failed to submit form. Please try again.');
@@ -115,6 +174,42 @@ export function MultiStepForm() {
 
   const CurrentStepComponent = steps[currentStep].component;
   const isLastStep = currentStep === steps.length - 1;
+
+  // Show rate limit message if blocked
+  if (rateLimitMessage) {
+    return (
+      <div className="max-w-4xl mx-auto p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Submission Limit Reached</h2>
+          <p className="text-gray-600">{rateLimitMessage}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show success message after submission
+  if (isSubmitted) {
+    return (
+      <div className="max-w-4xl mx-auto p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Application Submitted Successfully!</h2>
+          <p className="text-gray-600">
+            We will review your application shortly and your account will be ready soon.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-8 bg-white rounded-2xl shadow-xl border border-gray-100">

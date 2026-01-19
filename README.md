@@ -6,7 +6,10 @@ A secure, responsive multi-step contact form built with Next.js, designed for em
 
 - ✅ **Multi-step Form**: 5-step process for better user experience
 - ✅ **Zod Validation**: Client-side validation with user-friendly error messages
-- ✅ **File Uploads**: Secure file handling with size and type validation
+- ✅ **File Uploads**: Secure file handling with size and type validation (4 required files)
+- ✅ **Email Integration**: Automatic email sending with attachments using Nodemailer
+- ✅ **Rate Limiting**: 3 submissions per 24 hours (client + server-side)
+- ✅ **Form Protection**: Anti-resubmission after successful submission
 - ✅ **Responsive Design**: Mobile-first design with Tailwind CSS
 - ✅ **Anti-spam Protection**: Hidden honeypot field (no reCAPTCHA)
 - ✅ **TypeScript**: Full type safety throughout the application
@@ -146,6 +149,49 @@ Accepts FormData with all form fields and files. Returns JSON response:
   "message": "Form submitted successfully!"
 }
 ```
+
+## Environment Variables
+
+Create a `.env.local` file in your project root with the following email configuration:
+
+```env
+# Email Configuration (Gmail)
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-gmail-app-password
+EMAIL_TO=admin@yourcompany.com
+```
+
+### Gmail Setup (Required)
+1. **Enable 2-Factor Authentication** on your Gmail account
+2. **Generate an App Password**:
+   - Go to [myaccount.google.com/security](https://myaccount.google.com/security)
+   - Security → 2-Step Verification → App passwords
+   - Select "Mail" and generate password
+   - Use this 16-character password as `EMAIL_PASS`
+
+**Note:** `EMAIL_TO` is optional - if not set, emails will be sent to `EMAIL_USER`
+
+## Rate Limiting
+
+The form includes both client-side and server-side rate limiting:
+
+- **Limit**: 3 form submissions per 24 hours per user/IP
+- **Client-side**: Uses localStorage to track submissions
+- **Server-side**: IP-based tracking to prevent abuse
+- **Reset**: Counters reset after 24 hours
+
+### Rate Limit Behavior
+
+1. **First 3 submissions**: Allowed within 24-hour window
+2. **4th+ submissions**: Blocked with countdown message
+3. **After successful submission**: Form is hidden to prevent resubmission
+4. **Reset timing**: Automatic reset after 24 hours
+
+### Rate Limit Messages
+
+- **Before limit**: Shows submission count
+- **At limit**: "Rate limit exceeded. Try again in X hours"
+- **After submission**: Form hidden with success message
 
 ## Project Structure
 
