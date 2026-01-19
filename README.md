@@ -7,8 +7,9 @@ A secure, responsive multi-step contact form built with Next.js, designed for em
 - ✅ **Multi-step Form**: 5-step process for better user experience
 - ✅ **Zod Validation**: Client-side validation with user-friendly error messages
 - ✅ **File Uploads**: Secure file handling with size and type validation (4 required files)
-- ✅ **Email Integration**: Automatic email sending with attachments using Nodemailer
-- ✅ **Rate Limiting**: 3 submissions per 24 hours (client + server-side)
+- ✅ **PDF Generation**: All form data compiled into a single professional PDF
+- ✅ **Email Integration**: Automatic email sending with PDF attachment using Nodemailer
+- ✅ **Multiple Recipients**: Send to multiple email addresses simultaneously
 - ✅ **Form Protection**: Anti-resubmission after successful submission
 - ✅ **Responsive Design**: Mobile-first design with Tailwind CSS
 - ✅ **Anti-spam Protection**: Hidden honeypot field (no reCAPTCHA)
@@ -158,7 +159,7 @@ Create a `.env.local` file in your project root with the following email configu
 # Email Configuration (Gmail)
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASS=your-gmail-app-password
-EMAIL_TO=admin@yourcompany.com
+EMAIL_TO=admin@yourcompany.com,manager@company.com,support@bank.com
 ```
 
 ### Gmail Setup (Required)
@@ -169,29 +170,50 @@ EMAIL_TO=admin@yourcompany.com
    - Select "Mail" and generate password
    - Use this 16-character password as `EMAIL_PASS`
 
-**Note:** `EMAIL_TO` is optional - if not set, emails will be sent to `EMAIL_USER`
+### Multiple Recipients
+**`EMAIL_TO`** supports multiple email addresses:
+- **Format**: `email1@domain.com,email2@domain.com,email3@domain.com`
+- **Spaces**: Automatically trimmed (spaces around commas are ignored)
+- **Fallback**: If `EMAIL_TO` is empty, emails go to `EMAIL_USER`
 
-## Rate Limiting
+**Example:**
+```env
+EMAIL_TO=admin@bank.com, manager@bank.com, compliance@bank.com
+```
+This sends the form submission to 3 different email addresses simultaneously.
 
-The form includes both client-side and server-side rate limiting:
+## PDF Email Integration
 
-- **Limit**: 3 form submissions per 24 hours per user/IP
-- **Client-side**: Uses localStorage to track submissions
-- **Server-side**: IP-based tracking to prevent abuse
-- **Reset**: Counters reset after 24 hours
+The form generates a professional PDF document containing:
 
-### Rate Limit Behavior
+- **Complete applicant information** (all form fields)
+- **Document attachments list** (ID, passport, signature, utility bill)
+- **Professional formatting** with headers and footers
+- **Submission timestamp** and confidentiality notice
 
-1. **First 3 submissions**: Allowed within 24-hour window
-2. **4th+ submissions**: Blocked with countdown message
-3. **After successful submission**: Form is hidden to prevent resubmission
-4. **Reset timing**: Automatic reset after 24 hours
+### Email Features
 
-### Rate Limit Messages
+- **Single PDF attachment** instead of multiple files
+- **Multiple recipients** support (comma-separated)
+- **Professional email content** with clear instructions
+- **Automatic file naming** with timestamps
 
-- **Before limit**: Shows submission count
-- **At limit**: "Rate limit exceeded. Try again in X hours"
-- **After submission**: Form hidden with success message
+### PDF Content Structure
+
+```
+Account Opening Application
+Submission Date: [timestamp]
+
+[All form fields with proper formatting]
+
+Attached Documents:
+1. id_document.pdf (245 KB)
+2. passport_photo.jpg (180 KB)
+3. signature.png (50 KB)
+4. utility_bill.pdf (320 KB)
+
+This application is confidential and for bank use only.
+```
 
 ## Project Structure
 
