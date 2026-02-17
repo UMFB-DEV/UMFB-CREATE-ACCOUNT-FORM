@@ -19,17 +19,21 @@ const IS_DEV = process.env.NODE_ENV !== 'production';
 
 // Create email transporter
 const createTransporter = () => {
-  console.log('Creating email transporter with Gmail service...');
+  console.log('Creating email transporter with custom SMTP...');
 
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error('Missing EMAIL_USER or EMAIL_PASS environment variables');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || !process.env.SMTP_HOST || !process.env.SMTP_PORT) {
+    throw new Error('Missing EMAIL_USER, EMAIL_PASS, SMTP_HOST, or SMTP_PORT environment variables');
   }
 
   console.log('EMAIL_USER set:', !!process.env.EMAIL_USER);
   console.log('EMAIL_PASS set:', !!process.env.EMAIL_PASS);
+  console.log('SMTP_HOST set:', !!process.env.SMTP_HOST);
+  console.log('SMTP_PORT set:', !!process.env.SMTP_PORT);
 
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: process.env.SMTP_PORT == "465",
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,

@@ -46,7 +46,7 @@ export function NextOfKinStep({ form }: NextOfKinStepProps) {
         {/* Next of Kin Email */}
         <div>
           <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Next of Kin Email *
+            Next of Kin Email
           </label>
           <input
             type="email"

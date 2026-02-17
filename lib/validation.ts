@@ -33,7 +33,6 @@ export const personalInfoSchema = z.object({
     'LOAN EQUITY CONTRIBUTION-MANDATORY ACCOUNT',
     'MUTUAL FUNDS INVESTMENT ACCOUNT',
     'MYGOAL TARGET SAVINGS',
-    'BVN',
     'MYumbrella TERGET SAVINGS ACCOUNT',
     'PRESTIGE TARGET SAVINGS QR-CODE SAVINGS ACCOUNT',
     'REGULAR SAVINGS ACCOUNT',
@@ -64,7 +63,7 @@ export const personalInfoSchema = z.object({
   bvn: z.string().min(11, 'BVN must be 11 digits').max(11, 'BVN must be 11 digits'),
   nin: z.string().min(11, 'NIN must be 11 digits').max(11, 'NIN must be 11 digits'),
   mothersName: z.string().min(1, "Mother's name is required"),
-  email: z.string().email('Please enter a valid email address'),
+  email: z.string().email('Please enter a valid email address').optional().or(z.literal('')),
   phone: z.string().min(10, 'Phone number must be at least 10 digits'),
 });
 
@@ -83,7 +82,7 @@ export const employmentInfoSchema = z.object({
 export const nextOfKinSchema = z.object({
   nextOfKinName: z.string().min(1, 'Next of kin name is required'),
   nextOfKinPhone: z.string().min(10, 'Next of kin phone must be at least 10 digits'),
-  nextOfKinEmail: z.string().email('Please enter a valid email for next of kin'),
+  nextOfKinEmail: z.string().email('Please enter a valid email for next of kin').optional().or(z.literal('')),
   nextOfKinRelationship: z.string().min(1, 'Relationship is required'),
 });
 
