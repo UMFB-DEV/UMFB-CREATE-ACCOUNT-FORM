@@ -69,6 +69,8 @@ export function MultiStepForm() {
   };
 
   const onSubmit = async (data: ContactForm) => {
+    console.log('=== Personal Form SUBMIT ATTEMPTED ===');
+
     // Log the form data
     console.log('Form submitted with data:', data);
 
@@ -96,6 +98,9 @@ export function MultiStepForm() {
     try {
       const formData = new FormData();
       let fileCount = 0;
+      
+      // Add explicit form type field for reliable detection
+      formData.append('formType', 'personal');
 
       // Add all form fields
       console.log('Preparing FormData for submission...');
@@ -216,7 +221,11 @@ export function MultiStepForm() {
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit)} onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+        }
+      }}>
         {/* Hidden honeypot field */}
         <input
           type="text"
@@ -239,8 +248,11 @@ export function MultiStepForm() {
 
           {isLastStep ? (
             <button
-              type="submit"
+              type="button"
               disabled={isSubmitting}
+              onClick={async () => {
+                await handleSubmit(onSubmit)();
+              }}
               className="px-8 py-4 bg-[#7B3434] text-white rounded-full hover:bg-[#6A2D2D] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
             >
               {isSubmitting ? 'Submitting...' : 'Submit'}
