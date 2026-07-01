@@ -236,11 +236,11 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
     formTitle = 'Personal Account Opening Application';
   }
 
-  drawLine('From: Unilag Microfinance Bank <info@unilagmfbank.com>', { bold: true });
+  /* drawLine('From: Unilag Microfinance Bank <info@unilagmfbank.com>', { bold: true }); */
   drawLine(`Sent: ${new Date().toLocaleString()}`, { size: 10 });
-  drawLine('To: Unilag Microfinance Bank <accountopening@unilagmfbank.com>', { size: 10 });
-  drawLine(`Subject: ${subjectLine}`, { size: 10 });
-  y -= 10;
+  /* drawLine('To: Unilag Microfinance Bank <accountopening@unilagmfbank.com>', { size: 10 }); */
+ /*  drawLine(`Subject: ${subjectLine}`, { size: 10 }); */
+ /*  y -= 10; */
 
   drawLine(formTitle, { bold: true, size: 18 });
   y -= 10;

@@ -727,7 +727,7 @@ const LoanInfoSection = memo(function LoanInfoSection({ formData, updateField }:
       </div>
       
       <div>
-        <label className="block font-semibold text-sm mb-1 text-gray-700">How did you hear about Unilag MDB?</label>
+        <label className="block font-semibold text-sm mb-1 text-gray-700">How did you hear about Unilag MFB?</label>
         <input
           type="text"
           value={formData.howHeard}
