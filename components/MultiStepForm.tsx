@@ -168,8 +168,8 @@ export function MultiStepForm() {
   // Show success message after submission
   if (isSubmitted) {
     return (
-      <div className="max-w-4xl mx-auto p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
-        <div className="text-center py-12">
+      <div className="w-full bg-white shadow-xl border border-gray-100 py-6">
+        <div className="text-center py-8 w-full">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -185,9 +185,9 @@ export function MultiStepForm() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+    <div className="w-full bg-white shadow-xl border border-gray-100 py-6">
       {/* Progress Indicator */}
-      <div className="mb-8">
+      <div className="mb-8 w-full">
         <div className="flex justify-between items-center mb-4">
           {steps.map((step, index) => (
             <div
@@ -225,7 +225,7 @@ export function MultiStepForm() {
         if (e.key === 'Enter') {
           e.preventDefault();
         }
-      }}>
+      }} className="w-full">
         {/* Hidden honeypot field */}
         <input
           type="text"

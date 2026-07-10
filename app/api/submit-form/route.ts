@@ -17,39 +17,51 @@ dotenv.config();
 
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
-// Create email transporter
+// Create email transporter with fallback
 const createTransporter = () => {
-  console.log('Creating email transporter with custom SMTP...');
+  console.log('Creating email transporter...');
+  
+  // Try custom SMTP first
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS && process.env.SMTP_HOST && process.env.SMTP_PORT) {
+    console.log('Using custom SMTP settings');
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT),
+      secure: process.env.SMTP_PORT == "465",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
 
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || !process.env.SMTP_HOST || !process.env.SMTP_PORT) {
-    throw new Error('Missing EMAIL_USER, EMAIL_PASS, SMTP_HOST, or SMTP_PORT environment variables');
+    // Test the transporter connection
+    transporter.verify((error, success) => {
+      if (error) {
+        console.error('Email transporter verification failed:', error);
+      } else {
+        console.log('Email transporter verified successfully');
+      }
+    });
+
+    return transporter;
   }
 
-  console.log('EMAIL_USER set:', !!process.env.EMAIL_USER);
-  console.log('EMAIL_PASS set:', !!process.env.EMAIL_PASS);
-  console.log('SMTP_HOST set:', !!process.env.SMTP_HOST);
-  console.log('SMTP_PORT set:', !!process.env.SMTP_PORT);
+  // Fall back to Gmail-style if SMTP not set (check if EMAIL_USER and EMAIL_PASS exist)
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    console.log('Using Gmail SMTP fallback');
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: process.env.SMTP_PORT == "465",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+    return transporter;
+  }
 
-  // Test the transporter connection
-  transporter.verify((error, success) => {
-    if (error) {
-      console.error('Email transporter verification failed:', error);
-    } else {
-      console.log('Email transporter verified successfully');
-    }
-  });
-
-  return transporter;
+  // If no email config, throw error
+  throw new Error('Missing email configuration - check EMAIL_USER and EMAIL_PASS environment variables');
 };
 
 // Helper to parse form data into a nested object
@@ -73,7 +85,16 @@ function parseFormData(formData: FormData) {
     }
     
     // Store value whether it's File or string
-    current[keys[keys.length - 1]] = value;
+    let parsedValue: any = value;
+    if (!(value instanceof File)) {
+      const lowerValue = String(value).toLowerCase().trim();
+      if (lowerValue === 'true' || lowerValue === 'on' || lowerValue === 'yes') {
+        parsedValue = true;
+      } else if (lowerValue === 'false' || lowerValue === 'off' || lowerValue === 'no') {
+        parsedValue = false;
+      }
+    }
+    current[keys[keys.length - 1]] = parsedValue;
     
     // Also keep track of files for attachments
     if (value instanceof File) {
@@ -91,13 +112,17 @@ function formatFieldName(key: string): string {
 
 // Corporate form sections
 const corporateSections = [
-  { name: '1. COMPANY DETAILS', fields: ['companyName', 'accountOfficer', 'accountType', 'registrationNumber', 'dateOfIncorporation', 'registeredOfficeAddress', 'natureOfBusiness', 'phoneNumber', 'emailAddress', 'website', 'taxIdentificationNumber', 'businessAddress', 'businessPhone', 'businessEmail', 'companyType'] },
-  { name: '2. BOARD RESOLUTION', fields: ['boardResolutionMeetingDate', 'boardResolutionCompanyName', 'boardResolutionCompanySecretary', 'boardResolutionMandate', 'boardResolutionDirectors', 'boardResolutionSignatories'] },
-  { name: '3. ACCOUNT SIGNATORY DETAILS', fields: ['accountSignatories'] },
-  { name: '4. DIRECTORS/EXECUTIVES DETAILS', fields: ['directorsDetails'] },
-  { name: '5. OTHER BANK ACCOUNTS', fields: ['otherBankAccounts'] },
-  { name: '6. DECLARATION', fields: ['declarationCompanyName', 'declarationDate', 'declarationDirectorName', 'declarationDirectorSignature', 'declarationSecretaryName', 'declarationSecretarySignature', 'declarationAgreeTerms'] },
-  { name: '7. REFERENCE FORM', fields: ['referenceForm'] },
+  { name: '1. ADDRESS VERIFICATION', fields: ['verifiedAddress1', 'addressDescription1', 'comments1', 'verificationDate1', 'verifiedBy1', 'verifiedBySignature1', 'verifiedAddress2', 'addressDescription2', 'comments2', 'verificationDate2', 'verifiedBy2', 'verifiedBySignature2'] },
+  { name: '2. FINANCIAL INCLUSION', fields: ['tierLevel', 'hasBvn', 'bvnNumber', 'bvnVerified', 'bvnVerificationDate', 'accountCategory', 'accountPurpose', 'estimatedMonthlyTransactions', 'estimatedMonthlyVolume', 'authOfficerName', 'authOfficerSignature', 'authOfficerDate'] },
+  { name: '3. PEP/FEP CHECK', fields: ['isPep', 'pepCategory', 'pepName', 'pepPosition', 'pepInstitution', 'pepRelationship', 'pepCountry', 'hasPepRelative', 'pepRelativeName', 'pepRelativeRelationship', 'pepRelativePosition', 'pepRelativeInstitution', 'isFep', 'fepCategory', 'fepName', 'fepPosition', 'fepInstitution', 'fepRelationship', 'sourceOfFunds', 'sourceOfWealth', 'additionalInfo', 'pepOfficerName', 'pepOfficerSignature', 'pepOfficerDate'] },
+  { name: '4. CUSTOMER INTRODUCED BY', fields: ['introducerName', 'introducerAddress', 'introducerPhone', 'introducerOccupation', 'introducerRelationship', 'introducerBankName', 'introducerAccountNumber', 'introducerAccountName', 'introducerBranch', 'introductionDate', 'yearsKnown', 'introducerComments', 'isVerified', 'introducerVerificationDate', 'introducerVerifiedBy', 'staffName', 'staffSignature', 'staffDate'] },
+  { name: '5. COMPANY DETAILS', fields: ['companyName', 'accountOfficer', 'accountType', 'registrationNumber', 'dateOfIncorporation', 'registeredOfficeAddress', 'natureOfBusiness', 'phoneNumber', 'emailAddress', 'website', 'taxIdentificationNumber', 'businessAddress', 'businessPhone', 'businessEmail', 'companyType'] },
+  { name: '6. BOARD RESOLUTION', fields: ['boardResolutionMeetingDate', 'boardResolutionCompanyName', 'boardResolutionCompanySecretary', 'boardResolutionMandate', 'boardResolutionDirectors', 'boardResolutionSignatories'] },
+  { name: '7. ACCOUNT SIGNATORY DETAILS', fields: ['accountSignatories'] },
+  { name: '8. DIRECTORS/EXECUTIVES DETAILS', fields: ['directorsDetails'] },
+  { name: '9. OTHER BANK ACCOUNTS', fields: ['otherBankAccounts'] },
+  { name: '10. DECLARATION', fields: ['declarationCompanyName', 'declarationDate', 'declarationDirectorName', 'declarationDirectorSignature', 'declarationSecretaryName', 'declarationSecretarySignature', 'declarationAgreeTerms'] },
+  { name: '11. REFERENCE FORM', fields: ['referenceForm'] },
 ];
 
 // Personal form sections
@@ -128,7 +153,7 @@ function getFormType(data: any) {
   
   // Fallback to field detection if formType not available
   if (data.companyName || data.registrationNumber) return 'corporate';
-  if (data.businessName && data.loanAmount) return 'quick-loan';
+  if (data.business_name && data.loan_amount) return 'quick-loan';
   return 'personal';
 }
 
@@ -138,243 +163,727 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
   const { data: parsedData, files: parsedFiles } = parseFormData(formData);
   const formType = getFormType(parsedData);
   console.log('=== PDF GENERATION FORM TYPE ===', formType);
-  let sections;
-  if (formType === 'corporate') sections = corporateSections;
-  else if (formType === 'quick-loan') sections = businessLoanSections;
-  else sections = personalSections;
 
-  const pdfDoc = await PDFLibDocument.create();
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-  let page = pdfDoc.addPage([595.28, 841.89]); // A4
-  const { width, height } = page.getSize();
-  let y = height - 50;
-
-  const drawLine = (text: string, opts?: { bold?: boolean; size?: number; indent?: number }) => {
-    const size = opts?.size ?? 11;
-    const usedFont = opts?.bold ? fontBold : font;
-    const indent = opts?.indent ?? 0;
-    page.drawText(text, { x: 50 + indent, y, size, font: usedFont, color: rgb(0, 0, 0) });
-    y -= size + 6;
-    if (y < 60) {
-      page = pdfDoc.addPage([595.28, 841.89]);
-      y = height - 50;
-    }
-  };
-
-  const drawKeyValue = (label: string, value: string, indent: number = 10) => {
-    const size = 11;
-    const uppercaseLabel = label.toUpperCase();
-    const labelWidth = fontBold.widthOfTextAtSize(uppercaseLabel + ': ', size);
-    page.drawText(uppercaseLabel + ': ', { x: 50 + indent, y, size, font: fontBold, color: rgb(0, 0, 0) });
-    page.drawText(value, { x: 50 + indent + labelWidth, y, size, font, color: rgb(0, 0, 0) });
-    y -= size + 10; // extra space to avoid clustering
-    if (y < 60) {
-      page = pdfDoc.addPage([595.28, 841.89]);
-      y = height - 50;
-    }
-  };
-
-  // Optional logo at top (supports both URL and local file path)
-  const logoUrl = process.env.PDF_LOGO_URL;
-  if (logoUrl) {
-    try {
-      let logoArray: ArrayBuffer;
-      
-      // Check if it's a URL (starts with http) or local file path
-      if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
-        // Remote URL - fetch it
-        console.log('Loading logo from URL:', logoUrl);
-        const logoRes = await fetch(logoUrl);
-        logoArray = await logoRes.arrayBuffer();
-      } else {
-        // Local file path - read from public folder or absolute path
-        console.log('Loading logo from local file:', logoUrl);
-        const logoPath = logoUrl.startsWith('/') 
-          ? join(process.cwd(), 'public', logoUrl) // If starts with /, it's relative to public
-          : join(process.cwd(), logoUrl); // Otherwise use as-is (absolute or relative to project root)
-        const logoBuffer = readFileSync(logoPath);
-        logoArray = logoBuffer.buffer.slice(logoBuffer.byteOffset, logoBuffer.byteOffset + logoBuffer.byteLength);
-      }
-      
-      // Determine image type and embed accordingly
-      const logoUint8 = new Uint8Array(logoArray);
-      let logoImage;
-      
-      // Try PNG first, then JPEG
-      try {
-        logoImage = await pdfDoc.embedPng(logoUint8);
-      } catch {
-        logoImage = await pdfDoc.embedJpg(logoUint8);
-      }
-      
-      const logoDims = logoImage.scale(0.4);
-      page.drawImage(logoImage, {
-        x: (width - logoDims.width) / 2, // Center the logo
-        y: y - logoDims.height,
-        width: logoDims.width,
-        height: logoDims.height,
-      });
-      y -= logoDims.height + 12;
-      console.log('Logo embedded successfully');
-    } catch (e) {
-      console.warn('Logo load failed, continuing without logo:', e);
-    }
-  }
-
-  let subjectLine;
-  let formTitle;
   if (formType === 'quick-loan') {
-    subjectLine = 'New Quick Loan Application';
-    formTitle = 'Quick Loan Application';
-  } else if (formType === 'corporate') {
-    subjectLine = 'New Corporate Account Opening Application';
-    formTitle = 'Corporate Account Opening Application';
-  } else {
-    subjectLine = 'New Personal Account Creation Application';
-    formTitle = 'Personal Account Opening Application';
-  }
+    // Load the business loan PDF template
+    const templatePath = join(process.cwd(), 'public', 'BUSINESS_LOAN_FORM.pdf');
+    const templateBytes = readFileSync(templatePath);
+    const pdfDoc = await PDFLibDocument.load(templateBytes);
 
-  /* drawLine('From: Unilag Microfinance Bank <info@unilagmfbank.com>', { bold: true }); */
-  drawLine(`Sent: ${new Date().toLocaleString()}`, { size: 10 });
-  /* drawLine('To: Unilag Microfinance Bank <accountopening@unilagmfbank.com>', { size: 10 }); */
- /*  drawLine(`Subject: ${subjectLine}`, { size: 10 }); */
- /*  y -= 10; */
+    // Get first page
+    const [firstPage] = pdfDoc.getPages();
+    const form = pdfDoc.getForm();
 
-  drawLine(formTitle, { bold: true, size: 18 });
-  y -= 10;
-
-  // Helper to draw an image in the PDF
-  const drawImage = async (file: File, label: string, indent: number = 10) => {
-    try {
-      // Get file as ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      
-      let image;
-      try {
-        // Try to embed as PNG first
-        image = await pdfDoc.embedPng(uint8Array);
-      } catch {
-        // If that fails, try JPEG
+    // ------------------------------
+    // Step 1: Fill all PDF fields on page 1
+    // ------------------------------
+    // Helper functions to set fields
+    const setTextField = (name: string, value: any) => {
+      if (value) {
         try {
-          image = await pdfDoc.embedJpg(uint8Array);
-        } catch {
-          // If neither works, just show file name
-          drawKeyValue(label, `${file.name} (${(file.size / 1024).toFixed(1)} KB)`, indent);
-          return;
+          const field = form.getTextField(name);
+          field.setText(String(value));
+        } catch (e) {
+          console.warn(`Could not set text field ${name}:`, e);
         }
       }
-      
-      // Calculate image dimensions to fit in the page
-      const maxWidth = width - 100 - indent;
-      const maxHeight = 200; // Max height per image
-      let scale = 1;
-      
-      if (image.width > maxWidth) {
-        scale = maxWidth / image.width;
+    };
+
+    const setCheckBox = (name: string, checked: any) => {
+      if (checked) {
+        try {
+          const field = form.getCheckBox(name);
+          field.check();
+        } catch (e) {
+          console.warn(`Could not set checkbox ${name}:`, e);
+        }
       }
-      
-      let scaledWidth = image.width * scale;
-      let scaledHeight = image.height * scale;
-      
-      if (scaledHeight > maxHeight) {
-        scale = maxHeight / image.height;
-        scaledWidth = image.width * scale;
-        scaledHeight = image.height * scale;
+    };
+
+    // Client Information
+    setCheckBox('new_client', parsedData.isNewClient);
+    setCheckBox('recurrent_client', parsedData.isRecurringClient);
+    setTextField('client_id_no', parsedData.clientIdNo);
+
+    // Personal Information
+    setTextField('first_name', parsedData.first_name);
+    setTextField('middle_name', parsedData.middle_name);
+    setTextField('last_name', parsedData.last_name);
+    setTextField('date_of_birth', parsedData.date_of_birth);
+    setTextField('type_of_id', parsedData.type_of_id);
+    setTextField('id_number', parsedData.id_number);
+    setTextField('sex', parsedData.sex);
+    setTextField('bvn', parsedData.bvn);
+    setTextField('nationality', parsedData.nationality);
+    setTextField('telephone_1', parsedData.telephone_1);
+    setTextField('telephone_2', parsedData.telephone_2);
+
+    // Marital Status
+    setCheckBox('marital_married', parsedData.marital_married);
+    setCheckBox('marital_single', parsedData.marital_single);
+    setCheckBox('marital_separated', parsedData.marital_separated);
+    setCheckBox('marital_widow', parsedData.marital_widow);
+
+    // Address
+    setTextField('house_address', parsedData.house_address);
+    setTextField('town', parsedData.town);
+    setTextField('lga', parsedData.lga);
+    setTextField('state', parsedData.state);
+
+    // Spouse Information
+    setTextField('spouse_first_name', parsedData.spouse_first_name);
+    setTextField('spouse_middle_name', parsedData.spouse_middle_name);
+    setTextField('spouse_last_name', parsedData.spouse_last_name);
+    setTextField('spouse_date_of_birth', parsedData.spouse_date_of_birth);
+    setTextField('spouse_telephone_1', parsedData.spouse_telephone_1);
+    setTextField('spouse_telephone_2', parsedData.spouse_telephone_2);
+
+    // Next of Kin
+    setTextField('next_of_kin_name', parsedData.next_of_kin_name);
+    setTextField('next_of_kin_sex', parsedData.next_of_kin_sex);
+    setTextField('next_of_kin_relationship', parsedData.next_of_kin_relationship);
+    setTextField('next_of_kin_tel', parsedData.next_of_kin_tel);
+
+    // Business Information
+    setTextField('business_name', parsedData.business_name);
+    setCheckBox('biztype_no_registration', parsedData.biztype_no_registration);
+    setCheckBox('biztype_sole_proprietor', parsedData.biztype_sole_proprietor);
+    setCheckBox('biztype_ltd', parsedData.biztype_ltd);
+    setCheckBox('biztype_partnership', parsedData.biztype_partnership);
+    setTextField('business_address', parsedData.business_address);
+    setTextField('business_activity', parsedData.business_activity);
+    setTextField('location_since', parsedData.location_since);
+    setTextField('business_since', parsedData.business_since);
+    setTextField('tin_no', parsedData.tin_no);
+
+    // Loan Information
+    setTextField('loan_amount', parsedData.loan_amount);
+    setTextField('loan_months', parsedData.loan_months);
+    setTextField('monthly_repayment_capacity', parsedData.monthly_repayment_capacity);
+    setCheckBox('purpose_working_capital', parsedData.purpose_working_capital);
+    setCheckBox('purpose_fixed_asset', parsedData.purpose_fixed_asset);
+    setCheckBox('purpose_new_activity', parsedData.purpose_new_activity);
+    setTextField('investment_plan_detail', parsedData.investment_plan_detail);
+    setCheckBox('existing_loan_yes', parsedData.existing_loan_yes);
+    setCheckBox('existing_loan_no', parsedData.existing_loan_no);
+    setCheckBox('heard_friend', parsedData.heard_friend);
+    setCheckBox('heard_online_advertisement', parsedData.heard_online_advertisement);
+    setCheckBox('heard_relationship_officer', parsedData.heard_relationship_officer);
+    setCheckBox('heard_handbill', parsedData.heard_handbill);
+    setCheckBox('heard_others', parsedData.heard_others);
+
+    // Authorization (text fields)
+    setTextField('applicant_signature_date', parsedData.applicant_signature_date);
+    setTextField('ro_ca', parsedData.ro_ca);
+    setTextField('official_date', parsedData.official_date);
+    setTextField('assigned_ro', parsedData.assigned_ro);
+
+    console.log('=== DEBUG: Filled page 1 fields ===');
+
+    // ------------------------------
+    // Step 2: Add logo to the FIRST PAGE of the PDF template (RIGHT SIDE)!
+    // ------------------------------
+    try {
+      const logoPath = join(process.cwd(), 'public', 'Untitled-design-28.png');
+      const logoBuffer = readFileSync(logoPath);
+      const logoImage = await pdfDoc.embedPng(logoBuffer);
+      // Clear the full top-right placeholder area, then fit the logo inside it.
+      const logoBox = {
+        x: 390,
+        y: 770,
+        width: 170,
+        height: 62,
+        padding: 8,
+      };
+      const maxLogoWidth = logoBox.width - logoBox.padding * 2;
+      const maxLogoHeight = logoBox.height - logoBox.padding * 2;
+      const logoScale = Math.min(
+        maxLogoWidth / logoImage.width,
+        maxLogoHeight / logoImage.height
+      );
+      const logoWidth = logoImage.width * logoScale;
+      const logoHeight = logoImage.height * logoScale;
+
+      firstPage.drawRectangle({
+        x: logoBox.x,
+        y: logoBox.y,
+        width: logoBox.width,
+        height: logoBox.height,
+        color: rgb(1, 1, 1),
+        borderColor: rgb(1, 1, 1),
+        borderWidth: 1,
+      });
+
+      firstPage.drawImage(logoImage, {
+        x: logoBox.x + (logoBox.width - logoWidth) / 2,
+        y: logoBox.y + (logoBox.height - logoHeight) / 2,
+        width: logoWidth,
+        height: logoHeight,
+      });
+      console.log('Logo embedded in loan PDF placeholder box');
+    } catch (logoError) {
+      console.error('Failed to embed logo:', logoError);
+    }
+
+    // ------------------------------
+    // Step 3: Add SECOND PAGE (STATIC elements only - no form fields yet - LONGER PAGE!)
+    // ------------------------------
+    const secondPage = pdfDoc.addPage([595.28, 1100]); // Longer page to fit all approvals!
+    const { width: pageWidth, height: pageHeight } = secondPage.getSize();
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    // Page header
+    secondPage.drawText('APPROVALS', {
+      x: 50,
+      y: pageHeight - 50,
+      size: 24,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    // Helper function to draw approval section static content
+    let nextSectionStartY = pageHeight - 80; // Start a bit higher to fit!
+    const approvalSections = [
+      { title: 'TEAM LEAD', includeComment: true },
+      { title: 'HEAD OF MARKETING', includeComment: true },
+      { title: "MD'S APPROVAL", includeComment: false }
+    ];
+    const sectionInfo: Array<{title: string, startY: number, includeComment: boolean}> = [];
+
+    for (const section of approvalSections) {
+      sectionInfo.push({ title: section.title, startY: nextSectionStartY, includeComment: section.includeComment });
+      // Draw section title
+      secondPage.drawText(section.title, {
+        x: 50,
+        y: nextSectionStartY,
+        size: 16,
+        font: fontBold,
+        color: rgb(0, 0, 0),
+      });
+
+      if (section.includeComment) {
+        // Approved Amount label
+        const amountLabel = 'Approved Amount:';
+        secondPage.drawText(amountLabel, {
+          x: 60,
+          y: nextSectionStartY - 30,
+          size: 12,
+          font: fontBold,
+          color: rgb(0, 0, 0),
+        });
+
+        // Approved Date label
+        const dateLabel = 'Approved Date:';
+        secondPage.drawText(dateLabel, {
+          x: 60,
+          y: nextSectionStartY - 70,
+          size: 12,
+          font: fontBold,
+          color: rgb(0, 0, 0),
+        });
+
+        // Name label
+        const nameLabel = 'Name:';
+        secondPage.drawText(nameLabel, {
+          x: 60,
+          y: nextSectionStartY - 110,
+          size: 12,
+          font: fontBold,
+          color: rgb(0, 0, 0),
+        });
       }
+
+      if (section.includeComment) {
+        // Signature label and box
+        secondPage.drawText('Signature:', {
+          x: 60,
+          y: nextSectionStartY - 150,
+          size: 12,
+          font: fontBold,
+          color: rgb(0, 0, 0),
+        });
+        secondPage.drawRectangle({
+          x: 60,
+          y: nextSectionStartY - 210,
+          width: 250,
+          height: 50,
+          borderColor: rgb(0, 0, 0),
+          borderWidth: 1,
+        });
+
+        // Comment label
+        secondPage.drawText('Comment:', {
+          x: 60,
+          y: nextSectionStartY - 230,
+          size: 12,
+          font: fontBold,
+          color: rgb(0, 0, 0),
+        });
+        // Comment box
+        secondPage.drawRectangle({
+          x: 60,
+          y: nextSectionStartY - 290,
+          width: 400,
+          height: 50,
+          borderColor: rgb(0, 0, 0),
+          borderWidth: 1,
+        });
+        nextSectionStartY -= 310 + 30;
+      } else {
+        // Comment label and box for MD approval
+        secondPage.drawText('Comment:', {
+          x: 60,
+          y: nextSectionStartY - 30,
+          size: 12,
+          font: fontBold,
+          color: rgb(0, 0, 0),
+        });
+        secondPage.drawRectangle({
+          x: 60,
+          y: nextSectionStartY - 90,
+          width: 400,
+          height: 50,
+          borderColor: rgb(0, 0, 0),
+          borderWidth: 1,
+        });
+
+        // Signature label and box, spaced below the comment box
+        secondPage.drawText('Signature:', {
+          x: 60,
+          y: nextSectionStartY - 125,
+          size: 12,
+          font: fontBold,
+          color: rgb(0, 0, 0),
+        });
+        secondPage.drawRectangle({
+          x: 60,
+          y: nextSectionStartY - 190,
+          width: 300,
+          height: 55,
+          borderColor: rgb(0, 0, 0),
+          borderWidth: 1,
+        });
+
+        nextSectionStartY -= 230;
+      }
+    }
+
+    // ------------------------------
+    // Step 3: Flatten all original form fields so they become static!
+    // ------------------------------
+    console.log('=== DEBUG: Flattening form fields ===');
+    form.flatten();
+    // ------------------------------
+    // Step 4: Save PDF and reload!
+    // ------------------------------
+    console.log('=== DEBUG: Saving PDF ===');
+    const intermediatePdfBytes = await pdfDoc.save();
+    const flattenedDoc = await PDFLibDocument.load(intermediatePdfBytes);
+    const [flattenedFirstPage, flattenedSecondPage] = flattenedDoc.getPages();
+    const flattenedForm = flattenedDoc.getForm();
+
+    // ------------------------------
+    // Step 4: ADD SIGNATURES FIRST on TOP of flattened PDF!
+    // ------------------------------
+    console.log('=== DEBUG: Adding signatures on top of flattened PDF ===');
+    console.log('=== DEBUG: PARSED FILES ===', parsedFiles);
+
+    // Helper function to embed signature image (supports PNG and JPG)
+    const embedSignature = async (file: File | null, x1: number, y1: number, x2: number, y2: number, targetPage = flattenedFirstPage) => {
+      console.log('=== DEBUG: EMBED SIGNATURE ===', { hasFile: !!file, x1, y1, x2, y2 });
+      if (file) {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          let image;
+          
+          if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
+            image = await flattenedDoc.embedJpg(arrayBuffer);
+          } else {
+            image = await flattenedDoc.embedPng(arrayBuffer);
+          }
+          
+          // Calculate exact width and height from field rect
+          const fieldWidth = x2 - x1;
+          const fieldHeight = y2 - y1;
+          
+          // Use the signature's original aspect ratio
+          const imgAspectRatio = image.width / image.height;
+          
+          // Scale to fit the field height, but don't exceed field width
+          let sigHeight = fieldHeight * 3; // Make it taller
+          let sigWidth = sigHeight * imgAspectRatio;
+          
+          // If it's too wide, scale down to fit the field width
+          if (sigWidth > fieldWidth * 2) {
+            sigWidth = fieldWidth * 2;
+            sigHeight = sigWidth / imgAspectRatio;
+          }
+          
+          // Center the signature in the field
+          const sigX = x1 + (fieldWidth - sigWidth) / 2;
+          const sigY = y1 + (fieldHeight - sigHeight) / 2;
+          
+          targetPage.drawImage(image, {
+            x: sigX,
+            y: sigY,
+            width: sigWidth,
+            height: sigHeight,
+          });
+          
+          console.log('=== DEBUG: SIGNATURE EMBEDDED ===');
+        } catch (e) {
+          console.error(`=== ERROR: Could not embed signature at (${x1}, ${y1}):`, e);
+        }
+      } else {
+        console.log('=== DEBUG: NO SIGNATURE FILE ===');
+      }
+    };
+
+    // Get the file uploads from formData
+    const applicantSigFile = parsedFiles.find((f) => f.key === 'applicant_signature')?.value || null;
+    const supervisorSigFile = parsedFiles.find((f) => f.key === 'supervisor_signature')?.value || null;
+
+    // Signature positions from PDF field rects, adjusted for visibility:
+    // Field rects are [x1, y1, x2, y2] in PDF coordinates (bottom-left origin)
+    // Applicant signature: [141, 117.3898, 276, 128.3898]
+    // Supervisor signature shifted further right: [250, 75.38976, 413.4309, 85.38976]
+    await Promise.all([
+      embedSignature(applicantSigFile, 141, 117.3898, 276, 128.3898),
+      embedSignature(supervisorSigFile, 250, 75.38976, 413.4309, 85.38976),
+    ]);
+
+    // ------------------------------
+    // Step 5: Add EDITABLE approval form fields on TOP of flattened second page
+    // ------------------------------
+    const finalFontBold = await flattenedDoc.embedFont(StandardFonts.HelveticaBold);
+    const finalFont = await flattenedDoc.embedFont(StandardFonts.Helvetica);
+    
+    for (const info of sectionInfo) {
+      const fieldTitle = info.title;
+      const startY = info.startY;
+      const includeComment = info.includeComment;
       
-      // Check if we need a new page
-      if (y - scaledHeight - 20 < 60) {
+      if (includeComment) {
+        // Approved Amount field
+        const amountLabelWidth = finalFontBold.widthOfTextAtSize('Approved Amount:', 12);
+        const amountField = flattenedForm.createTextField(`${fieldTitle.toLowerCase().replace(/\s+/g, '_')}_approved_amount`);
+        amountField.addToPage(flattenedSecondPage, {
+          x: 60 + amountLabelWidth + 10,
+          y: startY - 45,
+          width: 200,
+          height: 20,
+        });
+        amountField.setFontSize(12);
+
+        // Approved Date field
+        const dateLabelWidth = finalFontBold.widthOfTextAtSize('Approved Date:', 12);
+        const dateField = flattenedForm.createTextField(`${fieldTitle.toLowerCase().replace(/\s+/g, '_')}_approved_date`);
+        dateField.addToPage(flattenedSecondPage, {
+          x: 60 + dateLabelWidth + 10,
+          y: startY - 85,
+          width: 200,
+          height: 20,
+        });
+        dateField.setFontSize(12);
+
+        // Name field
+        const nameLabelWidth = finalFontBold.widthOfTextAtSize('Name:', 12);
+        const nameField = flattenedForm.createTextField(`${fieldTitle.toLowerCase().replace(/\s+/g, '_')}_name`);
+        nameField.addToPage(flattenedSecondPage, {
+          x: 60 + nameLabelWidth + 10,
+          y: startY - 125,
+          width: 300,
+          height: 20,
+        });
+        nameField.setFontSize(12);
+
+        // Signature field
+        const sigTextField = flattenedForm.createTextField(`${fieldTitle.toLowerCase().replace(/\s+/g, '_')}_signature`);
+        sigTextField.addToPage(flattenedSecondPage, {
+          x: 65,
+          y: startY - 205,
+          width: 240,
+          height: 40,
+        });
+        sigTextField.setFontSize(12);
+
+        // Comment field
+        const commentField = flattenedForm.createTextField(`${fieldTitle.toLowerCase().replace(/\s+/g, '_')}_comment`);
+        commentField.addToPage(flattenedSecondPage, {
+          x: 65,
+          y: startY - 285,
+          width: 390,
+          height: 40,
+        });
+        commentField.enableMultiline();
+        commentField.setFontSize(12);
+      } else {
+        // MD comment and signature fields
+        const mdCommentField = flattenedForm.createTextField('md_comment');
+        mdCommentField.addToPage(flattenedSecondPage, {
+          x: 65,
+          y: startY - 85,
+          width: 390,
+          height: 40,
+        });
+        mdCommentField.enableMultiline();
+        mdCommentField.setFontSize(12);
+
+        const mdSigField = flattenedForm.createTextField('md_signature');
+        mdSigField.addToPage(flattenedSecondPage, {
+          x: 65,
+          y: startY - 185,
+          width: 290,
+          height: 45,
+        });
+        mdSigField.setFontSize(12);
+      }
+    }
+
+    // Save and return the final PDF
+    const finalPdfBytes = await flattenedDoc.save();
+    console.log('PDF generated successfully, size:', finalPdfBytes.length, 'bytes');
+    return Buffer.from(finalPdfBytes);
+  } else {
+    // Original logic for other forms
+    let sections;
+    if (formType === 'corporate') sections = corporateSections;
+    else sections = personalSections;
+
+    const pdfDoc = await PDFLibDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    let page = pdfDoc.addPage([595.28, 841.89]); // A4
+    const { width, height } = page.getSize();
+    let y = height - 50;
+
+    const drawLine = (text: string, opts?: { bold?: boolean; size?: number; indent?: number }) => {
+      const size = opts?.size ?? 11;
+      const usedFont = opts?.bold ? fontBold : font;
+      const indent = opts?.indent ?? 0;
+      page.drawText(text, { x: 50 + indent, y, size, font: usedFont, color: rgb(0, 0, 0) });
+      y -= size + 6;
+      if (y < 60) {
         page = pdfDoc.addPage([595.28, 841.89]);
         y = height - 50;
       }
-      
-      // Draw label
-      drawLine(`${formatFieldName(label)}:`, { size: 10, bold: true, indent });
-      
-      // Draw the image
-      page.drawImage(image, {
-        x: 50 + indent,
-        y: y - scaledHeight,
-        width: scaledWidth,
-        height: scaledHeight,
-      });
-      
-      // Update y position
-      y = y - scaledHeight - 20;
-    } catch (err) {
-      console.error(`Failed to embed image ${file.name}:`, err);
-      // Fallback to showing file name
-      drawKeyValue(label, `${file.name} (${(file.size / 1024).toFixed(1)} KB)`, indent);
-    }
-  };
+    };
 
-  // Render sections (async now because image embedding is async)
-  const renderSection = async (sectionName: string, sectionData: any, indent: number = 0) => {
-    drawLine(sectionName, { bold: true, size: 14, indent });
-    y -= 5;
-    
-    for (const [key, value] of Object.entries(sectionData)) {
-      if (Array.isArray(value)) {
-        // Check if it's an array of primitive values (strings/numbers/booleans)
-        const isPrimitiveArray = value.every(item => 
-          typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean'
-        );
+    const drawKeyValue = (label: string, value: string, indent: number = 10) => {
+      const size = 11;
+      const uppercaseLabel = label.toUpperCase();
+      const labelWidth = fontBold.widthOfTextAtSize(uppercaseLabel + ': ', size);
+      page.drawText(uppercaseLabel + ': ', { x: 50 + indent, y, size, font: fontBold, color: rgb(0, 0, 0) });
+      page.drawText(value, { x: 50 + indent + labelWidth, y, size, font, color: rgb(0, 0, 0) });
+      y -= size + 10; // extra space to avoid clustering
+      if (y < 60) {
+        page = pdfDoc.addPage([595.28, 841.89]);
+        y = height - 50;
+      }
+    };
+
+    // Optional logo at top (supports both URL and local file path)
+    const logoUrl = process.env.PDF_LOGO_URL;
+    if (logoUrl) {
+      try {
+        let logoArray: ArrayBuffer;
         
-        if (isPrimitiveArray) {
-          // Treat as a list of values, not nested sections
-          drawKeyValue(key, value.join(', '), indent);
+        // Check if it's a URL (starts with http) or local file path
+        if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
+          // Remote URL - fetch it
+          console.log('Loading logo from URL:', logoUrl);
+          const logoRes = await fetch(logoUrl);
+          logoArray = await logoRes.arrayBuffer();
         } else {
-          // Treat as array of objects
-          for (let index = 0; index < value.length; index++) {
-            await renderSection(`${formatFieldName(key)} ${index + 1}`, value[index], indent + 20);
+          // Local file path - read from public folder or absolute path
+          console.log('Loading logo from local file:', logoUrl);
+          const logoPath = logoUrl.startsWith('/') 
+            ? join(process.cwd(), 'public', logoUrl) // If starts with /, it's relative to public
+            : join(process.cwd(), logoUrl); // Otherwise use as-is (absolute or relative to project root)
+          const logoBuffer = readFileSync(logoPath);
+          logoArray = logoBuffer.buffer.slice(logoBuffer.byteOffset, logoBuffer.byteOffset + logoBuffer.byteLength);
+        }
+        
+        // Determine image type and embed accordingly
+        const logoUint8 = new Uint8Array(logoArray);
+        let logoImage;
+        
+        // Try PNG first, then JPEG
+        try {
+          logoImage = await pdfDoc.embedPng(logoUint8);
+        } catch {
+          logoImage = await pdfDoc.embedJpg(logoUint8);
+        }
+        
+        const logoDims = logoImage.scale(0.4);
+        page.drawImage(logoImage, {
+          x: (width - logoDims.width) / 2, // Center the logo
+          y: y - logoDims.height,
+          width: logoDims.width,
+          height: logoDims.height,
+        });
+        y -= logoDims.height + 12;
+        console.log('Logo embedded successfully');
+      } catch (e) {
+        console.warn('Logo load failed, continuing without logo:', e);
+      }
+    }
+
+    let subjectLine;
+    let formTitle;
+    if ((formType as any) === 'quick-loan') {
+      subjectLine = 'New Quick Loan Application';
+      formTitle = 'Quick Loan Application';
+    } else if (formType === 'corporate') {
+      subjectLine = 'New Corporate Account Opening Application';
+      formTitle = 'Corporate Account Opening Application';
+    } else {
+      subjectLine = 'New Personal Account Creation Application';
+      formTitle = 'Personal Account Opening Application';
+    }
+
+    /* drawLine('From: Unilag Microfinance Bank <info@unilagmfbank.com>', { bold: true }); */
+    drawLine(`Sent: ${new Date().toLocaleString()}`, { size: 10 });
+    /* drawLine('To: Unilag Microfinance Bank <accountopening@unilagmfbank.com>', { size: 10 }); */
+ /*  drawLine(`Subject: ${subjectLine}`, { size: 10 }); */
+ /*  y -= 10; */
+
+    drawLine(formTitle, { bold: true, size: 18 });
+    y -= 10;
+
+    // Helper to draw an image in the PDF
+    const drawImage = async (file: File, label: string, indent: number = 10) => {
+      try {
+        // Get file as ArrayBuffer
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        
+        let image;
+        try {
+          // Try to embed as PNG first
+          image = await pdfDoc.embedPng(uint8Array);
+        } catch {
+          // If that fails, try JPEG
+          try {
+            image = await pdfDoc.embedJpg(uint8Array);
+          } catch {
+            // If neither works, just show file name
+            drawKeyValue(label, `${file.name} (${(file.size / 1024).toFixed(1)} KB)`, indent);
+            return;
           }
         }
-      } else if (value && typeof value === 'object' && !(value instanceof File)) {
-        await renderSection(formatFieldName(key), value, indent + 20);
-      } else if (value !== null && value !== undefined && value !== '') {
-        if (value instanceof File) {
-          // It's a file - try to draw it as image
-          await drawImage(value, key, indent);
-        } else {
-          // Regular text value
-          drawKeyValue(key, String(value), indent);
+        
+        // Calculate image dimensions to fit in the page
+        const maxWidth = width - 100 - indent;
+        const maxHeight = 200; // Max height per image
+        let scale = 1;
+        
+        if (image.width > maxWidth) {
+          scale = maxWidth / image.width;
+        }
+        
+        let scaledWidth = image.width * scale;
+        let scaledHeight = image.height * scale;
+        
+        if (scaledHeight > maxHeight) {
+          scale = maxHeight / image.height;
+          scaledWidth = image.width * scale;
+          scaledHeight = image.height * scale;
+        }
+        
+        // Check if we need a new page
+        if (y - scaledHeight - 20 < 60) {
+          page = pdfDoc.addPage([595.28, 841.89]);
+          y = height - 50;
+        }
+        
+        // Draw label
+        drawLine(`${formatFieldName(label)}:`, { size: 10, bold: true, indent });
+        
+        // Draw the image
+        page.drawImage(image, {
+          x: 50 + indent,
+          y: y - scaledHeight,
+          width: scaledWidth,
+          height: scaledHeight,
+        });
+        
+        // Update y position
+        y = y - scaledHeight - 20;
+      } catch (err) {
+        console.error(`Failed to embed image ${file.name}:`, err);
+        // Fallback to showing file name
+        drawKeyValue(label, `${file.name} (${(file.size / 1024).toFixed(1)} KB)`, indent);
+      }
+    };
+
+    // Render sections (async now because image embedding is async)
+    const renderSection = async (sectionName: string, sectionData: any, indent: number = 0) => {
+      drawLine(sectionName, { bold: true, size: 14, indent });
+      y -= 5;
+      
+      for (const [key, value] of Object.entries(sectionData)) {
+        if (Array.isArray(value)) {
+          // Check if it's an array of primitive values (strings/numbers/booleans)
+          const isPrimitiveArray = value.every(item => 
+            typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean'
+          );
+          
+          if (isPrimitiveArray) {
+            // Treat as a list of values, not nested sections
+            drawKeyValue(key, value.join(', '), indent);
+          } else {
+            // Treat as array of objects
+            for (let index = 0; index < value.length; index++) {
+              await renderSection(`${formatFieldName(key)} ${index + 1}`, value[index], indent + 20);
+            }
+          }
+        } else if (value && typeof value === 'object' && !(value instanceof File)) {
+          await renderSection(formatFieldName(key), value, indent + 20);
+        } else if (value !== null && value !== undefined && value !== '') {
+          if (value instanceof File) {
+            // It's a file - try to draw it as image
+            await drawImage(value, key, indent);
+          } else {
+            // Regular text value
+            drawKeyValue(key, String(value), indent);
+          }
         }
       }
-    }
-    y -= 10;
-  };
+      y -= 10;
+    };
 
-  // Process each section
-  for (const section of sections) {
-    const sectionData: any = {};
-    section.fields.forEach(field => {
-      if (parsedData[field] !== undefined) {
-        sectionData[field] = parsedData[field];
+    // Process each section
+    for (const section of sections) {
+      const sectionData: any = {};
+      section.fields.forEach(field => {
+        if (parsedData[field] !== undefined) {
+          sectionData[field] = parsedData[field];
+        }
+      });
+      if (Object.keys(sectionData).length > 0) {
+        await renderSection(section.name, sectionData);
       }
-    });
-    if (Object.keys(sectionData).length > 0) {
-      await renderSection(section.name, sectionData);
     }
-  }
 
-  // Add files section
-  if (parsedFiles.length > 0) {
-    y -= 6;
-    drawLine('ATTACHED DOCUMENTS:', { bold: true, size: 14 });
-    for (const { key, value } of parsedFiles) {
-      await drawImage(value, key);
+    // Add files section
+    if (parsedFiles.length > 0) {
+      y -= 6;
+      drawLine('ATTACHED DOCUMENTS:', { bold: true, size: 14 });
+      for (const { key, value } of parsedFiles) {
+        await drawImage(value, key);
+      }
     }
+
+    y -= 16;
+    drawLine('This application is confidential and for bank use only.', { size: 9 });
+
+    const pdfBytes = await pdfDoc.save();
+    console.log('PDF generated successfully (pdf-lib), size:', pdfBytes.length, 'bytes');
+    return Buffer.from(pdfBytes);
   }
-
-  y -= 16;
-  drawLine('This application is confidential and for bank use only.', { size: 9 });
-
-  const pdfBytes = await pdfDoc.save();
-  console.log('PDF generated successfully (pdf-lib), size:', pdfBytes.length, 'bytes');
-  return Buffer.from(pdfBytes);
 }
 
 export async function POST(request: NextRequest) {
@@ -441,8 +950,8 @@ export async function POST(request: NextRequest) {
     const pdfBuffer = await createApplicationPDF(formData);
     console.log('PDF generated successfully, size:', pdfBuffer.length, 'bytes');
 
-    // Build plain text email content + collect original uploaded files as attachments
-    console.log('5b. Building email text + collecting uploaded files...');
+    // Build plain text email content
+    console.log('5b. Building email text...');
     
     // Build email content with sections
     const buildEmailSection = (sectionName: string, sectionData: any, indent: number = 0) => {
@@ -477,17 +986,13 @@ export async function POST(request: NextRequest) {
     };
 
     let emailContent = '';
-    const uploadedFileAttachments: Array<{
-      filename: string;
-      content: Buffer;
-      contentType?: string;
-    }> = [];
-
-    // Add files to attachments
+    
+    // Prepare file attachments
+    const fileAttachments: Array<{ filename: string; content: Buffer; contentType?: string }> = [];
     for (const { key, value } of parsedFiles) {
       const buffer = Buffer.from(await value.arrayBuffer());
-      uploadedFileAttachments.push({
-        filename: `${key}-${value.name}`,
+      fileAttachments.push({
+        filename: `${key}_${value.name}`,
         content: buffer,
         contentType: value.type || undefined,
       });
@@ -510,7 +1015,7 @@ export async function POST(request: NextRequest) {
     if (parsedFiles.length > 0) {
       emailContent += '## ATTACHED DOCUMENTS\n';
       for (const { key, value } of parsedFiles) {
-        emailContent += `  - ${formatFieldName(key)}: ${value.name} (${(value.size / 1024).toFixed(1)} KB, ${value.type})\n`;
+        emailContent += `  - ${formatFieldName(key)}: ${value.name} (${(value.size / 1024).toFixed(1)} KB, ${value.type}) - attached\n`;
       }
     }
 
@@ -582,10 +1087,8 @@ export async function POST(request: NextRequest) {
           filename: pdfFilename,
           content: pdfBuffer,
           contentType: 'application/pdf',
-        }
-        // Attach original uploaded files too
-        ,
-        ...uploadedFileAttachments,
+        },
+        ...fileAttachments
       ],
     };
 
@@ -594,7 +1097,7 @@ export async function POST(request: NextRequest) {
     console.log('To:', mailOptions.to);
     console.log('Subject:', mailOptions.subject);
     console.log('Attachment size:', pdfBuffer.length, 'bytes');
-    console.log('Uploaded file attachments:', uploadedFileAttachments.length);
+    console.log('Number of file attachments:', fileAttachments.length);
 
     const emailResult = await transporter.sendMail(mailOptions);
     console.log('Email sent successfully!');
@@ -659,4 +1162,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

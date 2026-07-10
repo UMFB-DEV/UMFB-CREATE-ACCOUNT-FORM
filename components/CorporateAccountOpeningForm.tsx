@@ -6,6 +6,75 @@ import { SignatureInput } from './SignatureInput';
 const createItemId = () => Math.random().toString(36).slice(2, 10);
 
 const initialFormData = {
+  // BANK USE ONLY FIELDS
+  verifiedAddress1: '',
+  addressDescription1: '',
+  comments1: '',
+  verificationDate1: '',
+  verifiedBy1: '',
+  verifiedBySignature1: '',
+  verifiedAddress2: '',
+  addressDescription2: '',
+  comments2: '',
+  verificationDate2: '',
+  verifiedBy2: '',
+  verifiedBySignature2: '',
+  tierLevel: '',
+  hasBvn: false,
+  bvnNumber: '',
+  bvnVerified: false,
+  bvnVerificationDate: '',
+  accountCategory: '',
+  accountPurpose: '',
+  estimatedMonthlyTransactions: '',
+  estimatedMonthlyVolume: '',
+  authOfficerName: '',
+  authOfficerSignature: '',
+  authOfficerDate: '',
+  isPep: false,
+  pepCategory: '',
+  pepName: '',
+  pepPosition: '',
+  pepInstitution: '',
+  pepRelationship: '',
+  pepCountry: '',
+  hasPepRelative: false,
+  pepRelativeName: '',
+  pepRelativeRelationship: '',
+  pepRelativePosition: '',
+  pepRelativeInstitution: '',
+  isFep: false,
+  fepCategory: '',
+  fepName: '',
+  fepPosition: '',
+  fepInstitution: '',
+  fepRelationship: '',
+  sourceOfFunds: '',
+  sourceOfWealth: '',
+  additionalInfo: '',
+  pepOfficerName: '',
+  pepOfficerSignature: '',
+  pepOfficerDate: '',
+  introducerName: '',
+  introducerAddress: '',
+  introducerPhone: '',
+  introducerOccupation: '',
+  introducerRelationship: '',
+  introducerBankName: '',
+  introducerAccountNumber: '',
+  introducerAccountName: '',
+  introducerBranch: '',
+  introductionDate: '',
+  yearsKnown: '',
+  introducerComments: '',
+  isVerified: false,
+  introducerVerificationDate: '',
+  introducerVerifiedBy: '',
+  staffName: '',
+  staffSignature: '',
+  staffDate: '',
+
+  // EXISTING FIELDS
   companyName: '',
   accountOfficer: '',
   registrationNumber: '',
@@ -147,14 +216,16 @@ const InputRow = memo(function InputRow({
   required = false,
   type = 'text',
   onChange,
+  maxLength,
 }: {
   label: string;
   name: string;
-  value: string | number | boolean;
+  value: string | number | boolean | undefined | null;
   placeholder?: string;
   required?: boolean;
   type?: string;
   onChange: (name: string, value: string) => void;
+  maxLength?: number;
 }) {
   return (
     <div className="flex flex-col">
@@ -165,11 +236,12 @@ const InputRow = memo(function InputRow({
       <input
         type={type}
         name={name}
-        value={String(value)}
+        value={value != null ? String(value) : ''}
         placeholder={placeholder}
         onChange={(event) => onChange(name, event.target.value)}
         autoComplete="off"
         className="rounded-2xl border border-gray-300 px-4 py-3 text-sm text-black outline-none transition focus:border-[#7B3434] focus:shadow-sm"
+        maxLength={maxLength}
       />
     </div>
   );
@@ -186,7 +258,7 @@ const TextAreaRow = memo(function TextAreaRow({
 }: {
   label: string;
   name: string;
-  value: string;
+  value: string | undefined | null;
   placeholder?: string;
   required?: boolean;
   rows?: number;
@@ -200,7 +272,7 @@ const TextAreaRow = memo(function TextAreaRow({
       </label>
       <textarea
         name={name}
-        value={value}
+        value={value ?? ''}
         placeholder={placeholder}
         rows={rows}
         onChange={(event) => onChange(name, event.target.value)}
@@ -221,7 +293,7 @@ const SelectRow = memo(function SelectRow({
 }: {
   label: string;
   name: string;
-  value: string;
+  value: string | undefined | null;
   options: { value: string; label: string }[];
   required?: boolean;
   onChange: (name: string, value: string) => void;
@@ -234,7 +306,7 @@ const SelectRow = memo(function SelectRow({
       </label>
       <select
         name={name}
-        value={value}
+        value={value ?? ''}
         onChange={(event) => onChange(name, event.target.value)}
         className="rounded-2xl border border-gray-300 px-4 py-3 text-sm text-black outline-none transition focus:border-[#7B3434] focus:shadow-sm"
       >
@@ -246,6 +318,759 @@ const SelectRow = memo(function SelectRow({
         ))}
       </select>
     </div>
+  );
+});
+
+const CheckboxRow = memo(function CheckboxRow({
+  label,
+  name,
+  checked,
+  onChange,
+}: {
+  label: string;
+  name: string;
+  checked: boolean | undefined | null;
+  onChange: (name: string, value: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center gap-3 font-semibold text-sm text-gray-700 cursor-pointer">
+      <input
+        type="checkbox"
+        name={name}
+        checked={!!checked}
+        onChange={(event) => onChange(name, event.target.checked)}
+        className="h-4 w-4 cursor-pointer accent-[#7B3434]"
+      />
+      {label}
+    </label>
+  );
+});
+
+const AddressVerificationSection = memo(function AddressVerificationSection({
+  formData,
+  updateField,
+}: any) {
+  return (
+    <section className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-[#7B3434]">A. ADDRESS VERIFICATION / VISITATION DETAILS</h2>
+      </div>
+
+      {/* Instructions */}
+      <div className="bg-white p-6 rounded-2xl border-2 border-[#ACD23C]">
+        <h3 className="text-lg font-bold text-[#7B3434] mb-2">IMPORTANT INSTRUCTIONS</h3>
+        <p className="text-gray-700 text-sm md:text-base">
+          Get the required details from your relationship officer for this section to proceed
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        <h3 className="font-semibold text-sm text-gray-700">First Verification</h3>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="lg:col-span-2">
+            <TextAreaRow
+              label="Verified Business/Company Address"
+              name="verifiedAddress1"
+              value={formData.verifiedAddress1}
+              required
+              placeholder="Enter the verified business/company address"
+              onChange={updateField}
+              rows={2}
+            />
+          </div>
+          <div className="lg:col-span-2">
+            <TextAreaRow
+              label="Address Description and Findings"
+              name="addressDescription1"
+              value={formData.addressDescription1}
+              required
+              placeholder="Describe the address and findings during visitation"
+              onChange={updateField}
+              rows={3}
+            />
+          </div>
+          <div className="lg:col-span-2">
+            <TextAreaRow
+              label="Comments"
+              name="comments1"
+              value={formData.comments1}
+              required
+              placeholder="Enter any additional comments or observations"
+              onChange={updateField}
+              rows={2}
+            />
+          </div>
+          <InputRow
+            label="Verification Date"
+            name="verificationDate1"
+            value={formData.verificationDate1}
+            type="date"
+            required
+            onChange={updateField}
+          />
+          <InputRow
+            label="Verified By"
+            name="verifiedBy1"
+            value={formData.verifiedBy1}
+            placeholder="Enter name of verifier"
+            required
+            onChange={updateField}
+          />
+          <div className="lg:col-span-2">
+            <SignatureInput
+              label="Verifier Signature"
+              value={formData.verifiedBySignature1}
+              onChange={(value) => updateField('verifiedBySignature1', value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-gray-300 pt-6 space-y-6">
+        <h3 className="font-semibold text-sm text-gray-700">Second Verification (Confirmation)</h3>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="lg:col-span-2">
+            <TextAreaRow
+              label="I hereby confirm the existence of the prospective customer's Business office/company address at"
+              name="verifiedAddress2"
+              value={formData.verifiedAddress2}
+              placeholder="Enter the confirmed business/company address"
+              onChange={updateField}
+              rows={2}
+            />
+          </div>
+          <div className="lg:col-span-2">
+            <TextAreaRow
+              label="Address Description and Findings"
+              name="addressDescription2"
+              value={formData.addressDescription2}
+              placeholder="Describe the address and findings during confirmation visitation"
+              onChange={updateField}
+              rows={3}
+            />
+          </div>
+          <div className="lg:col-span-2">
+            <TextAreaRow
+              label="Comments"
+              name="comments2"
+              value={formData.comments2}
+              placeholder="Enter any additional comments or observations"
+              onChange={updateField}
+              rows={2}
+            />
+          </div>
+          <InputRow
+            label="Verification Date"
+            name="verificationDate2"
+            value={formData.verificationDate2}
+            type="date"
+            onChange={updateField}
+          />
+          <InputRow
+            label="Verified By"
+            name="verifiedBy2"
+            value={formData.verifiedBy2}
+            placeholder="Enter name of verifier"
+            onChange={updateField}
+          />
+          <div className="lg:col-span-2">
+            <SignatureInput
+              label="Verifier Signature"
+              value={formData.verifiedBySignature2}
+              onChange={(value) => updateField('verifiedBySignature2', value)}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+});
+
+const FinancialInclusionAuthenticationSection = memo(function FinancialInclusionAuthenticationSection({
+  formData,
+  updateField,
+}: any) {
+  return (
+    <section className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-[#7B3434]">B. AUTHENTICATION FOR FINANCIAL INCLUSION</h2>
+      </div>
+
+      {/* Instructions */}
+      <div className="bg-white p-6 rounded-2xl border-2 border-[#ACD23C]">
+        <h3 className="text-lg font-bold text-[#7B3434] mb-2">IMPORTANT INSTRUCTIONS</h3>
+        <p className="text-gray-700 text-sm md:text-base">
+          Get the required details from your relationship officer for this section to proceed
+        </p>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SelectRow
+          label="Financial Inclusion Tier Level"
+          name="tierLevel"
+          value={formData.tierLevel}
+          options={[
+            { value: 'tier0', label: 'Tier 0 - No account' },
+            { value: 'tier1', label: 'Tier 1 - Basic account' },
+            { value: 'tier2', label: 'Tier 2 - Intermediate account' },
+            { value: 'tier3', label: 'Tier 3 - Full account' },
+          ]}
+          required
+          onChange={updateField}
+        />
+        <SelectRow
+          label="Account Category"
+          name="accountCategory"
+          value={formData.accountCategory}
+          options={[
+            { value: 'individual', label: 'Individual' },
+            { value: 'corporate', label: 'Corporate' },
+            { value: 'sme', label: 'SME' },
+            { value: 'farmer', label: 'Farmer' },
+            { value: 'trader', label: 'Trader' },
+            { value: 'others', label: 'Others' },
+          ]}
+          required
+          onChange={updateField}
+        />
+
+        <div className="lg:col-span-2">
+          <CheckboxRow
+            label="Customer has BVN (Bank Verification Number)"
+            name="hasBvn"
+            checked={formData.hasBvn}
+            onChange={updateField}
+          />
+        </div>
+
+        {formData.hasBvn && (
+          <>
+            <InputRow
+              label="BVN Number"
+              name="bvnNumber"
+              value={formData.bvnNumber}
+              placeholder="Enter 11-digit BVN"
+              maxLength={11}
+              required
+              onChange={updateField}
+            />
+            <InputRow
+              label="BVN Verification Date"
+              name="bvnVerificationDate"
+              value={formData.bvnVerificationDate}
+              type="date"
+              onChange={updateField}
+            />
+            <div className="lg:col-span-2">
+              <CheckboxRow
+                label="BVN Verified"
+                name="bvnVerified"
+                checked={formData.bvnVerified}
+                onChange={updateField}
+              />
+            </div>
+          </>
+        )}
+
+        <div className="lg:col-span-2">
+          <TextAreaRow
+            label="Account Purpose"
+            name="accountPurpose"
+            value={formData.accountPurpose}
+            required
+            placeholder="Describe the purpose of the account"
+            onChange={updateField}
+            rows={2}
+          />
+        </div>
+
+        <InputRow
+          label="Estimated Monthly Transactions"
+          name="estimatedMonthlyTransactions"
+          value={formData.estimatedMonthlyTransactions}
+          type="number"
+          placeholder="Number of transactions"
+          onChange={updateField}
+        />
+
+        <InputRow
+          label="Estimated Monthly Volume (₦)"
+          name="estimatedMonthlyVolume"
+          value={formData.estimatedMonthlyVolume}
+          type="number"
+          placeholder="Enter estimated monthly volume"
+          onChange={updateField}
+        />
+
+        <div className="lg:col-span-2 border-t border-gray-300 pt-6 space-y-6">
+          <h3 className="font-semibold text-sm text-gray-700">Authentication Officer Details</h3>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <InputRow
+              label="Officer Name"
+              name="authOfficerName"
+              value={formData.authOfficerName}
+              required
+              placeholder="Enter officer name"
+              onChange={updateField}
+            />
+            <div className="lg:col-span-2">
+              <SignatureInput
+                label="Officer Signature"
+                value={formData.authOfficerSignature}
+                onChange={(value) => updateField('authOfficerSignature', value)}
+              />
+            </div>
+            <InputRow
+              label="Date"
+              name="authOfficerDate"
+              value={formData.authOfficerDate}
+              type="date"
+              required
+              onChange={updateField}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+});
+
+const PoliticallyExposedPersonsSection = memo(function PoliticallyExposedPersonsSection({
+  formData,
+  updateField,
+}: any) {
+  return (
+    <section className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-[#7B3434]">C. AUTHENTICATION FOR POLITICALLY / FINANCIALLY EXPOSED PERSONS</h2>
+      </div>
+
+      {/* Instructions */}
+      <div className="bg-white p-6 rounded-2xl border-2 border-[#ACD23C]">
+        <h3 className="text-lg font-bold text-[#7B3434] mb-2">IMPORTANT INSTRUCTIONS</h3>
+        <p className="text-gray-700 text-sm md:text-base">
+          Get the required details from your relationship officer for this section to proceed
+        </p>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="lg:col-span-2">
+          <CheckboxRow
+            label="Is the customer a Politically Exposed Person (PEP)?"
+            name="isPep"
+            checked={formData.isPep}
+            onChange={updateField}
+          />
+        </div>
+
+        {formData.isPep && (
+          <>
+            <SelectRow
+              label="PEP Category"
+              name="pepCategory"
+              value={formData.pepCategory}
+              options={[
+                { value: 'head_of_state', label: 'Head of State/Government' },
+                { value: 'government_official', label: 'Senior Government Official' },
+                { value: 'judicial', label: 'Judicial Official' },
+                { value: 'military', label: 'Senior Military Officer' },
+                { value: 'diplomat', label: 'Diplomat' },
+                { value: 'state_owned', label: 'State-Owned Enterprise Official' },
+                { value: 'political_party', label: 'Political Party Official' },
+                { value: 'others', label: 'Others' },
+              ]}
+              required
+              onChange={updateField}
+            />
+            <InputRow
+              label="Country"
+              name="pepCountry"
+              value={formData.pepCountry}
+              required
+              placeholder="Enter country"
+              onChange={updateField}
+            />
+            <InputRow
+              label="PEP Full Name"
+              name="pepName"
+              value={formData.pepName}
+              required
+              placeholder="Enter full name"
+              onChange={updateField}
+            />
+            <InputRow
+              label="Position/Title"
+              name="pepPosition"
+              value={formData.pepPosition}
+              required
+              placeholder="Enter position"
+              onChange={updateField}
+            />
+            <InputRow
+              label="Institution/Organization"
+              name="pepInstitution"
+              value={formData.pepInstitution}
+              required
+              placeholder="Enter institution name"
+              onChange={updateField}
+            />
+            <InputRow
+              label="Relationship to Customer"
+              name="pepRelationship"
+              value={formData.pepRelationship}
+              required
+              placeholder="e.g., Director, Shareholder, Family"
+              onChange={updateField}
+            />
+          </>
+        )}
+
+        <div className="lg:col-span-2 border-t border-gray-300 pt-6">
+          <CheckboxRow
+            label="Does the customer have any PEP relatives or close associates?"
+            name="hasPepRelative"
+            checked={formData.hasPepRelative}
+            onChange={updateField}
+          />
+        </div>
+
+        {formData.hasPepRelative && (
+          <>
+            <InputRow
+              label="Relative/Associate Name"
+              name="pepRelativeName"
+              value={formData.pepRelativeName}
+              placeholder="Enter full name"
+              onChange={updateField}
+            />
+            <InputRow
+              label="Relationship"
+              name="pepRelativeRelationship"
+              value={formData.pepRelativeRelationship}
+              placeholder="e.g., Spouse, Child, Business Partner"
+              onChange={updateField}
+            />
+            <InputRow
+              label="Position/Title"
+              name="pepRelativePosition"
+              value={formData.pepRelativePosition}
+              placeholder="Enter position"
+              onChange={updateField}
+            />
+            <InputRow
+              label="Institution/Organization"
+              name="pepRelativeInstitution"
+              value={formData.pepRelativeInstitution}
+              placeholder="Enter institution name"
+              onChange={updateField}
+            />
+          </>
+        )}
+
+        <div className="lg:col-span-2 border-t border-gray-300 pt-6">
+          <CheckboxRow
+            label="Is the customer a Financially Exposed Person (FEP)?"
+            name="isFep"
+            checked={formData.isFep}
+            onChange={updateField}
+          />
+        </div>
+
+        {formData.isFep && (
+          <>
+            <SelectRow
+              label="FEP Category"
+              name="fepCategory"
+              value={formData.fepCategory}
+              options={[
+                { value: 'high_net_worth', label: 'High Net Worth Individual' },
+                { value: 'business_magnate', label: 'Business Magnate' },
+                { value: 'industry_leader', label: 'Industry Leader' },
+                { value: 'others', label: 'Others' },
+              ]}
+              onChange={updateField}
+            />
+            <InputRow
+              label="FEP Full Name"
+              name="fepName"
+              value={formData.fepName}
+              placeholder="Enter full name"
+              onChange={updateField}
+            />
+            <InputRow
+              label="Position/Title"
+              name="fepPosition"
+              value={formData.fepPosition}
+              placeholder="Enter position"
+              onChange={updateField}
+            />
+            <InputRow
+              label="Institution/Organization"
+              name="fepInstitution"
+              value={formData.fepInstitution}
+              placeholder="Enter institution name"
+              onChange={updateField}
+            />
+            <InputRow
+              label="Relationship to Customer"
+              name="fepRelationship"
+              value={formData.fepRelationship}
+              placeholder="e.g., Director, Shareholder"
+              onChange={updateField}
+            />
+          </>
+        )}
+
+        <div className="lg:col-span-2">
+          <TextAreaRow
+            label="Source of Funds"
+            name="sourceOfFunds"
+            value={formData.sourceOfFunds}
+            required
+            placeholder="Describe the source of funds for the account"
+            onChange={updateField}
+            rows={2}
+          />
+        </div>
+        <div className="lg:col-span-2">
+          <TextAreaRow
+            label="Source of Wealth"
+            name="sourceOfWealth"
+            value={formData.sourceOfWealth}
+            placeholder="Describe the source of wealth"
+            onChange={updateField}
+            rows={2}
+          />
+        </div>
+        <div className="lg:col-span-2">
+          <TextAreaRow
+            label="Additional Information"
+            name="additionalInfo"
+            value={formData.additionalInfo}
+            placeholder="Any additional relevant information"
+            onChange={updateField}
+            rows={2}
+          />
+        </div>
+
+        <div className="lg:col-span-2 border-t border-gray-300 pt-6 space-y-6">
+          <h3 className="font-semibold text-sm text-gray-700">Authentication Officer Details</h3>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <InputRow
+              label="Officer Name"
+              name="pepOfficerName"
+              value={formData.pepOfficerName}
+              required
+              placeholder="Enter officer name"
+              onChange={updateField}
+            />
+            <div className="lg:col-span-2">
+              <SignatureInput
+                label="Officer Signature"
+                value={formData.pepOfficerSignature}
+                onChange={(value) => updateField('pepOfficerSignature', value)}
+              />
+            </div>
+            <InputRow
+              label="Date"
+              name="pepOfficerDate"
+              value={formData.pepOfficerDate}
+              type="date"
+              required
+              onChange={updateField}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+});
+
+const CustomerIntroducedBySection = memo(function CustomerIntroducedBySection({
+  formData,
+  updateField,
+}: any) {
+  return (
+    <section className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-[#7B3434]">D. CUSTOMER INTRODUCED BY</h2>
+      </div>
+
+      {/* Instructions */}
+      <div className="bg-white p-6 rounded-2xl border-2 border-[#ACD23C]">
+        <h3 className="text-lg font-bold text-[#7B3434] mb-2">IMPORTANT INSTRUCTIONS</h3>
+        <p className="text-gray-700 text-sm md:text-base">
+          Get the required details from your relationship officer for this section to proceed
+        </p>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <h3 className="font-semibold text-sm text-gray-700 lg:col-span-2">Introducer Details</h3>
+
+        <div className="lg:col-span-2">
+          <InputRow
+            label="Introducer Full Name"
+            name="introducerName"
+            value={formData.introducerName}
+            required
+            placeholder="Enter introducer's full name"
+            onChange={updateField}
+          />
+        </div>
+        <div className="lg:col-span-2">
+          <TextAreaRow
+            label="Introducer Address"
+            name="introducerAddress"
+            value={formData.introducerAddress}
+            required
+            placeholder="Enter introducer's full address"
+            onChange={updateField}
+            rows={2}
+          />
+        </div>
+        <InputRow
+          label="Introducer Phone"
+          name="introducerPhone"
+          value={formData.introducerPhone}
+          type="tel"
+          required
+          placeholder="Enter phone number"
+          onChange={updateField}
+        />
+        <InputRow
+          label="Introducer Occupation"
+          name="introducerOccupation"
+          value={formData.introducerOccupation}
+          required
+          placeholder="Enter occupation"
+          onChange={updateField}
+        />
+        <InputRow
+          label="Relationship to Customer"
+          name="introducerRelationship"
+          value={formData.introducerRelationship}
+          required
+          placeholder="e.g., Business Partner, Friend, Family"
+          onChange={updateField}
+        />
+        <InputRow
+          label="How long known?"
+          name="yearsKnown"
+          value={formData.yearsKnown}
+          required
+          placeholder="e.g., 5 years, 3 months"
+          onChange={updateField}
+        />
+        <InputRow
+          label="Introduction Date"
+          name="introductionDate"
+          value={formData.introductionDate}
+          type="date"
+          onChange={updateField}
+        />
+
+        <div className="lg:col-span-2 border-t border-gray-300 pt-6">
+          <h3 className="font-semibold text-sm text-gray-700 mb-6">Introducer's Bank Details (Optional)</h3>
+        </div>
+        <InputRow
+          label="Bank Name"
+          name="introducerBankName"
+          value={formData.introducerBankName}
+          placeholder="Enter bank name"
+          onChange={updateField}
+        />
+        <InputRow
+          label="Account Name"
+          name="introducerAccountName"
+          value={formData.introducerAccountName}
+          placeholder="Enter account name"
+          onChange={updateField}
+        />
+        <InputRow
+          label="Account Number"
+          name="introducerAccountNumber"
+          value={formData.introducerAccountNumber}
+          placeholder="Enter account number"
+          onChange={updateField}
+        />
+        <InputRow
+          label="Branch"
+          name="introducerBranch"
+          value={formData.introducerBranch}
+          placeholder="Enter branch"
+          onChange={updateField}
+        />
+
+        <div className="lg:col-span-2">
+          <TextAreaRow
+            label="Comments"
+            name="introducerComments"
+            value={formData.introducerComments}
+            placeholder="Additional comments about the introduction"
+            onChange={updateField}
+            rows={2}
+          />
+        </div>
+
+        <div className="lg:col-span-2 border-t border-gray-300 pt-6">
+          <h3 className="font-semibold text-sm text-gray-700 mb-6">Verification & Authentication</h3>
+          <CheckboxRow
+            label="Introduction has been verified"
+            name="isVerified"
+            checked={formData.isVerified}
+            onChange={updateField}
+          />
+        </div>
+
+        {formData.isVerified && (
+          <>
+            <InputRow
+              label="Verification Date"
+              name="introducerVerificationDate"
+              value={formData.introducerVerificationDate}
+              type="date"
+              onChange={updateField}
+            />
+            <InputRow
+              label="Verified By"
+              name="introducerVerifiedBy"
+              value={formData.introducerVerifiedBy}
+              placeholder="Enter verifier name"
+              onChange={updateField}
+            />
+          </>
+        )}
+
+        <div className="lg:col-span-2 border-t border-gray-300 pt-6">
+          <h3 className="font-semibold text-sm text-gray-700 mb-6">Staff Authentication</h3>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <InputRow
+              label="Staff Name"
+              name="staffName"
+              value={formData.staffName}
+              required
+              placeholder="Enter staff name"
+              onChange={updateField}
+            />
+            <div className="lg:col-span-2">
+              <SignatureInput
+                label="Staff Signature"
+                value={formData.staffSignature}
+                onChange={(value) => updateField('staffSignature', value)}
+              />
+            </div>
+            <InputRow
+              label="Date"
+              name="staffDate"
+              value={formData.staffDate}
+              type="date"
+              required
+              onChange={updateField}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
   );
 });
 
@@ -1300,14 +2125,17 @@ export function CorporateAccountOpeningForm() {
   }, []);
 
   const steps = [
-    { id: 1, title: 'Bank Use Checklist' },
-    { id: 2, title: 'Company Details' },
-    { id: 3, title: 'Board Resolution' },
-    { id: 4, title: 'Signatory Details' },
-    { id: 5, title: 'Directors Details' },
-    { id: 6, title: 'Other Bank Accounts' },
-    { id: 7, title: 'Declaration' },
-    { id: 8, title: 'Reference Form' },
+    { id: 1, title: 'Address Verification' },
+    { id: 2, title: 'Financial Inclusion' },
+    { id: 3, title: 'PEP/FEP Check' },
+    { id: 4, title: 'Customer Introduced By' },
+    { id: 5, title: 'Company Details' },
+    { id: 6, title: 'Board Resolution' },
+    { id: 7, title: 'Signatory Details' },
+    { id: 8, title: 'Directors Details' },
+    { id: 9, title: 'Other Bank Accounts' },
+    { id: 10, title: 'Declaration' },
+    { id: 11, title: 'Reference Form' },
   ];
 
   const nextStep = () => {
@@ -1386,20 +2214,26 @@ export function CorporateAccountOpeningForm() {
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 1:
-        return <BankUseChecklistSection />;
+        return <AddressVerificationSection formData={formData} updateField={updateField} />;
       case 2:
-        return <CompanyDetailsSection formData={formData} updateField={updateField} />;
+        return <FinancialInclusionAuthenticationSection formData={formData} updateField={updateField} />;
       case 3:
-        return <BoardResolutionSection formData={formData} updateField={updateField} updateArrayItem={updateArrayItem} />;
+        return <PoliticallyExposedPersonsSection formData={formData} updateField={updateField} />;
       case 4:
-        return <AccountSignatoryDetailsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
+        return <CustomerIntroducedBySection formData={formData} updateField={updateField} />;
       case 5:
-        return <DirectorsDetailsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
+        return <CompanyDetailsSection formData={formData} updateField={updateField} />;
       case 6:
-        return <OtherBankAccountsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
+        return <BoardResolutionSection formData={formData} updateField={updateField} updateArrayItem={updateArrayItem} />;
       case 7:
-        return <DeclarationSection formData={formData} updateField={updateField} />;
+        return <AccountSignatoryDetailsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
       case 8:
+        return <DirectorsDetailsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
+      case 9:
+        return <OtherBankAccountsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
+      case 10:
+        return <DeclarationSection formData={formData} updateField={updateField} />;
+      case 11:
         return <ReferenceFormSection formData={formData} updateField={updateField} />;
       default:
         return null;
@@ -1408,10 +2242,12 @@ export function CorporateAccountOpeningForm() {
 
   if (isSubmitted) {
     return (
-      <div className="rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-lg">
+      <div className="w-full border border-gray-200 bg-white py-6 text-center shadow-lg">
         <div className="mx-auto mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#ACD23C] text-3xl text-white">✓</div>
-        <h2 className="text-3xl font-bold text-[#7B3434] mb-4">Application Submitted</h2>
-        <p className="text-gray-600">Thank you. Your corporate account opening form has been recorded successfully.</p>
+        <div className="w-full px-4">
+          <h2 className="text-2xl font-bold text-[#7B3434] mb-4">Application Submitted</h2>
+          <p className="text-gray-600">Thank you. Your corporate account opening form has been recorded successfully.</p>
+        </div>
       </div>
     );
   }
@@ -1422,25 +2258,27 @@ export function CorporateAccountOpeningForm() {
         e.preventDefault();
       }
     }} className="space-y-10">
-      <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-lg">
-        <div className="mb-6">
+      <div className="w-full border border-gray-200 bg-white py-6 shadow-lg">
+        <div className="mb-6 w-full px-4">
           <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.2em] text-[#7B3434]">
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#7B3434] text-white">{currentStep}</span>
             <span>Step {currentStep} of {steps.length}</span>
           </div>
-          <h1 className="mt-3 text-3xl font-bold text-gray-900">{steps[currentStep - 1].title}</h1>
+          <h1 className="mt-3 text-2xl font-bold text-gray-900">{steps[currentStep - 1].title}</h1>
         </div>
 
-        <div className="mb-8 overflow-hidden rounded-2xl bg-gray-100">
+        <div className="mb-8 w-full px-4 overflow-hidden rounded-2xl bg-gray-100">
           <div className="h-2 bg-gray-200">
             <div className="h-2 bg-[#7B3434] transition-all duration-300" style={{ width: `${((currentStep - 1) / (steps.length - 1) * 100)}%` }} />
           </div>
         </div>
 
-        {renderCurrentStep()}
+        <div className="w-full px-4">
+          {renderCurrentStep()}
+        </div>
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:justify-between w-full px-4">
         <button
           type="button"
           disabled={currentStep === 1}
