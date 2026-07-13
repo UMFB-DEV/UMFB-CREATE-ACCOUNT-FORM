@@ -326,147 +326,143 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
     }
 
     // ------------------------------
-    // Step 3: Add SECOND PAGE (STATIC elements only - no form fields yet - LONGER PAGE!)
+    // Step 3: Add SECOND PAGE with the same branded field style as page 1
     // ------------------------------
-    const secondPage = pdfDoc.addPage([595.28, 1100]); // Longer page to fit all approvals!
+    const secondPage = pdfDoc.addPage([595.28, 841.89]); // A4
     const { width: pageWidth, height: pageHeight } = secondPage.getSize();
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const brandBrown = rgb(0.482, 0.204, 0.204);
+    const brandGreen = rgb(0.675, 0.824, 0.235);
+    const paleGreen = rgb(0.96, 0.99, 0.9);
+    const lightGray = rgb(0.95, 0.95, 0.95);
+    const darkText = rgb(0.08, 0.08, 0.08);
 
     // Page header
-    secondPage.drawText('APPROVALS', {
-      x: 50,
-      y: pageHeight - 50,
-      size: 24,
+    secondPage.drawRectangle({
+      x: 0,
+      y: pageHeight - 82,
+      width: pageWidth,
+      height: 82,
+      color: brandBrown,
+    });
+    secondPage.drawRectangle({
+      x: 0,
+      y: pageHeight - 88,
+      width: pageWidth,
+      height: 6,
+      color: brandGreen,
+    });
+    secondPage.drawText('LOAN APPLICATION APPROVALS', {
+      x: 35,
+      y: pageHeight - 39,
+      size: 18,
       font: fontBold,
-      color: rgb(0, 0, 0),
+      color: rgb(1, 1, 1),
+    });
+    secondPage.drawText('For bank use only', {
+      x: 35,
+      y: pageHeight - 58,
+      size: 10,
+      font,
+      color: rgb(1, 1, 1),
     });
 
-    // Helper function to draw approval section static content
-    let nextSectionStartY = pageHeight - 80; // Start a bit higher to fit!
     const approvalSections = [
-      { title: 'TEAM LEAD', includeComment: true },
-      { title: 'HEAD OF MARKETING', includeComment: true },
-      { title: "MD'S APPROVAL", includeComment: false }
+      { title: 'TEAM LEAD', key: 'team_lead', fullApproval: true },
+      { title: 'HEAD OF MARKETING', key: 'head_of_marketing', fullApproval: true },
+      { title: 'COMPLIANCE', key: 'compliance', fullApproval: true },
+      { title: "MD'S APPROVAL", key: 'md', fullApproval: false }
     ];
-    const sectionInfo: Array<{title: string, startY: number, includeComment: boolean}> = [];
+    const sectionInfo: Array<{title: string, key: string, startY: number, fullApproval: boolean}> = [];
+    const sectionX = 35;
+    const sectionWidth = pageWidth - 70;
+    const sectionHeight = 152;
+    const fieldHeight = 18;
+    const signatureHeight = 34;
+    const commentHeight = 34;
+    let nextSectionStartY = pageHeight - 118;
+
+    const drawFieldLabel = (label: string, x: number, y: number) => {
+      secondPage.drawText(label, {
+        x,
+        y,
+        size: 8,
+        font: fontBold,
+        color: brandBrown,
+      });
+    };
+
+    const drawInputBox = (x: number, y: number, width: number, height: number) => {
+      secondPage.drawRectangle({
+        x,
+        y,
+        width,
+        height,
+        color: rgb(1, 1, 1),
+        borderColor: brandBrown,
+        borderWidth: 0.8,
+      });
+    };
 
     for (const section of approvalSections) {
-      sectionInfo.push({ title: section.title, startY: nextSectionStartY, includeComment: section.includeComment });
-      // Draw section title
+      sectionInfo.push({ title: section.title, key: section.key, startY: nextSectionStartY, fullApproval: section.fullApproval });
+      const sectionBottomY = nextSectionStartY - sectionHeight;
+
+      secondPage.drawRectangle({
+        x: sectionX,
+        y: sectionBottomY,
+        width: sectionWidth,
+        height: sectionHeight,
+        color: paleGreen,
+        borderColor: brandBrown,
+        borderWidth: 1,
+      });
+      secondPage.drawRectangle({
+        x: sectionX,
+        y: nextSectionStartY - 25,
+        width: sectionWidth,
+        height: 25,
+        color: brandBrown,
+      });
       secondPage.drawText(section.title, {
-        x: 50,
-        y: nextSectionStartY,
-        size: 16,
+        x: sectionX + 12,
+        y: nextSectionStartY - 17,
+        size: 11,
         font: fontBold,
-        color: rgb(0, 0, 0),
+        color: rgb(1, 1, 1),
       });
 
-      if (section.includeComment) {
-        // Approved Amount label
-        const amountLabel = 'Approved Amount:';
-        secondPage.drawText(amountLabel, {
-          x: 60,
-          y: nextSectionStartY - 30,
-          size: 12,
-          font: fontBold,
-          color: rgb(0, 0, 0),
-        });
+      const rowOneY = nextSectionStartY - 62;
+      const rowTwoY = nextSectionStartY - 94;
+      const rowThreeY = nextSectionStartY - 130;
 
-        // Approved Date label
-        const dateLabel = 'Approved Date:';
-        secondPage.drawText(dateLabel, {
-          x: 60,
-          y: nextSectionStartY - 70,
-          size: 12,
-          font: fontBold,
-          color: rgb(0, 0, 0),
-        });
+      if (section.fullApproval) {
+        drawFieldLabel('Approved Amount', sectionX + 12, rowOneY + 22);
+        drawInputBox(sectionX + 112, rowOneY + 16, 155, fieldHeight);
 
-        // Name label
-        const nameLabel = 'Name:';
-        secondPage.drawText(nameLabel, {
-          x: 60,
-          y: nextSectionStartY - 110,
-          size: 12,
-          font: fontBold,
-          color: rgb(0, 0, 0),
-        });
+        drawFieldLabel('Approved Date', sectionX + 285, rowOneY + 22);
+        drawInputBox(sectionX + 370, rowOneY + 16, 142, fieldHeight);
+
+        drawFieldLabel('Name', sectionX + 12, rowTwoY + 22);
+        drawInputBox(sectionX + 58, rowTwoY + 16, 454, fieldHeight);
       }
 
-      if (section.includeComment) {
-        // Signature label and box
-        secondPage.drawText('Signature:', {
-          x: 60,
-          y: nextSectionStartY - 150,
-          size: 12,
-          font: fontBold,
-          color: rgb(0, 0, 0),
-        });
-        secondPage.drawRectangle({
-          x: 60,
-          y: nextSectionStartY - 210,
-          width: 250,
-          height: 50,
-          borderColor: rgb(0, 0, 0),
-          borderWidth: 1,
-        });
+      drawFieldLabel('Signature', sectionX + 12, rowThreeY + 36);
+      drawInputBox(sectionX + 12, rowThreeY - 2, 220, signatureHeight);
 
-        // Comment label
-        secondPage.drawText('Comment:', {
-          x: 60,
-          y: nextSectionStartY - 230,
-          size: 12,
-          font: fontBold,
-          color: rgb(0, 0, 0),
-        });
-        // Comment box
-        secondPage.drawRectangle({
-          x: 60,
-          y: nextSectionStartY - 290,
-          width: 400,
-          height: 50,
-          borderColor: rgb(0, 0, 0),
-          borderWidth: 1,
-        });
-        nextSectionStartY -= 310 + 30;
-      } else {
-        // Comment label and box for MD approval
-        secondPage.drawText('Comment:', {
-          x: 60,
-          y: nextSectionStartY - 30,
-          size: 12,
-          font: fontBold,
-          color: rgb(0, 0, 0),
-        });
-        secondPage.drawRectangle({
-          x: 60,
-          y: nextSectionStartY - 90,
-          width: 400,
-          height: 50,
-          borderColor: rgb(0, 0, 0),
-          borderWidth: 1,
-        });
+      drawFieldLabel('Comment', sectionX + 252, rowThreeY + 36);
+      drawInputBox(sectionX + 252, rowThreeY - 2, 260, commentHeight);
 
-        // Signature label and box, spaced below the comment box
-        secondPage.drawText('Signature:', {
-          x: 60,
-          y: nextSectionStartY - 125,
-          size: 12,
-          font: fontBold,
-          color: rgb(0, 0, 0),
-        });
-        secondPage.drawRectangle({
-          x: 60,
-          y: nextSectionStartY - 190,
-          width: 300,
-          height: 55,
-          borderColor: rgb(0, 0, 0),
-          borderWidth: 1,
-        });
+      secondPage.drawRectangle({
+        x: sectionX,
+        y: sectionBottomY,
+        width: sectionWidth,
+        height: 5,
+        color: brandGreen,
+      });
 
-        nextSectionStartY -= 230;
-      }
+      nextSectionStartY -= sectionHeight + 18;
     }
 
     // ------------------------------
@@ -556,89 +552,64 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
     // ------------------------------
     // Step 5: Add EDITABLE approval form fields on TOP of flattened second page
     // ------------------------------
-    const finalFontBold = await flattenedDoc.embedFont(StandardFonts.HelveticaBold);
-    const finalFont = await flattenedDoc.embedFont(StandardFonts.Helvetica);
-    
     for (const info of sectionInfo) {
-      const fieldTitle = info.title;
+      const fieldKey = info.key;
       const startY = info.startY;
-      const includeComment = info.includeComment;
-      
-      if (includeComment) {
-        // Approved Amount field
-        const amountLabelWidth = finalFontBold.widthOfTextAtSize('Approved Amount:', 12);
-        const amountField = flattenedForm.createTextField(`${fieldTitle.toLowerCase().replace(/\s+/g, '_')}_approved_amount`);
+      const fullApproval = info.fullApproval;
+      const rowOneY = startY - 62;
+      const rowTwoY = startY - 94;
+      const rowThreeY = startY - 130;
+
+      if (fullApproval) {
+        const amountField = flattenedForm.createTextField(`${fieldKey}_approved_amount`);
         amountField.addToPage(flattenedSecondPage, {
-          x: 60 + amountLabelWidth + 10,
-          y: startY - 45,
-          width: 200,
-          height: 20,
+          x: sectionX + 116,
+          y: rowOneY + 18,
+          width: 147,
+          height: 14,
+          borderWidth: 0,
+          backgroundColor: rgb(1, 1, 1),
+          textColor: darkText,
         });
-        amountField.setFontSize(12);
+        amountField.setFontSize(10);
 
-        // Approved Date field
-        const dateLabelWidth = finalFontBold.widthOfTextAtSize('Approved Date:', 12);
-        const dateField = flattenedForm.createTextField(`${fieldTitle.toLowerCase().replace(/\s+/g, '_')}_approved_date`);
+        const dateField = flattenedForm.createTextField(`${fieldKey}_approved_date`);
         dateField.addToPage(flattenedSecondPage, {
-          x: 60 + dateLabelWidth + 10,
-          y: startY - 85,
-          width: 200,
-          height: 20,
+          x: sectionX + 374,
+          y: rowOneY + 18,
+          width: 134,
+          height: 14,
+          borderWidth: 0,
+          backgroundColor: rgb(1, 1, 1),
+          textColor: darkText,
         });
-        dateField.setFontSize(12);
+        dateField.setFontSize(10);
 
-        // Name field
-        const nameLabelWidth = finalFontBold.widthOfTextAtSize('Name:', 12);
-        const nameField = flattenedForm.createTextField(`${fieldTitle.toLowerCase().replace(/\s+/g, '_')}_name`);
+        const nameField = flattenedForm.createTextField(`${fieldKey}_name`);
         nameField.addToPage(flattenedSecondPage, {
-          x: 60 + nameLabelWidth + 10,
-          y: startY - 125,
-          width: 300,
-          height: 20,
+          x: sectionX + 62,
+          y: rowTwoY + 18,
+          width: 446,
+          height: 14,
+          borderWidth: 0,
+          backgroundColor: rgb(1, 1, 1),
+          textColor: darkText,
         });
-        nameField.setFontSize(12);
-
-        // Signature field
-        const sigTextField = flattenedForm.createTextField(`${fieldTitle.toLowerCase().replace(/\s+/g, '_')}_signature`);
-        sigTextField.addToPage(flattenedSecondPage, {
-          x: 65,
-          y: startY - 205,
-          width: 240,
-          height: 40,
-        });
-        sigTextField.setFontSize(12);
-
-        // Comment field
-        const commentField = flattenedForm.createTextField(`${fieldTitle.toLowerCase().replace(/\s+/g, '_')}_comment`);
-        commentField.addToPage(flattenedSecondPage, {
-          x: 65,
-          y: startY - 285,
-          width: 390,
-          height: 40,
-        });
-        commentField.enableMultiline();
-        commentField.setFontSize(12);
-      } else {
-        // MD comment and signature fields
-        const mdCommentField = flattenedForm.createTextField('md_comment');
-        mdCommentField.addToPage(flattenedSecondPage, {
-          x: 65,
-          y: startY - 85,
-          width: 390,
-          height: 40,
-        });
-        mdCommentField.enableMultiline();
-        mdCommentField.setFontSize(12);
-
-        const mdSigField = flattenedForm.createTextField('md_signature');
-        mdSigField.addToPage(flattenedSecondPage, {
-          x: 65,
-          y: startY - 185,
-          width: 290,
-          height: 45,
-        });
-        mdSigField.setFontSize(12);
+        nameField.setFontSize(10);
       }
+
+      const commentField = flattenedForm.createTextField(`${fieldKey}_comment`);
+      commentField.addToPage(flattenedSecondPage, {
+        x: sectionX + 256,
+        y: rowThreeY + 2,
+        width: 252,
+        height: 26,
+        borderWidth: 0,
+        backgroundColor: rgb(1, 1, 1),
+        textColor: darkText,
+      });
+      commentField.enableMultiline();
+      commentField.setFontSize(10);
     }
 
     // Save and return the final PDF
