@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:corporate-fields": "node --test scripts/test-corporate-account-fields.mjs",
+    "test:corporate-e2e": "npm run build && playwright test tests/corporate-account-opening.spec.ts",
+    "test:corporate-e2e:email": "powershell -Command \"$env:SEND_REAL_EMAIL='true'; npm run test:corporate-e2e\""
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -23,6 +26,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.5",

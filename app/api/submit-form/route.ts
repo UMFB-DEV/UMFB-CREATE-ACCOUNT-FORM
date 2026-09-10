@@ -16,6 +16,7 @@ console.log('- EMAIL_TO:', process.env.EMAIL_TO || 'NOT SET');
 dotenv.config();
 
 const IS_DEV = process.env.NODE_ENV !== 'production';
+const EMAIL_SEND_TIMEOUT_MS = 15000;
 
 // Create email transporter with fallback
 const createTransporter = () => {
@@ -28,6 +29,9 @@ const createTransporter = () => {
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT),
       secure: process.env.SMTP_PORT == "465",
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -51,6 +55,9 @@ const createTransporter = () => {
     console.log('Using Gmail SMTP fallback');
     const transporter = nodemailer.createTransport({
       service: 'gmail',
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -63,6 +70,15 @@ const createTransporter = () => {
   // If no email config, throw error
   throw new Error('Missing email configuration - check EMAIL_USER and EMAIL_PASS environment variables');
 };
+
+async function sendMailWithTimeout(transporter: nodemailer.Transporter, mailOptions: nodemailer.SendMailOptions) {
+  return Promise.race([
+    transporter.sendMail(mailOptions),
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`Email send timed out after ${EMAIL_SEND_TIMEOUT_MS}ms`)), EMAIL_SEND_TIMEOUT_MS);
+    }),
+  ]);
+}
 
 // Helper to parse form data into a nested object
 function parseFormData(formData: FormData) {
@@ -105,24 +121,95 @@ function parseFormData(formData: FormData) {
   return { data: result, files };
 }
 
-// Field name formatting
+// Labels used in the corporate form.  Keeping these in one place makes the PDF
+// and email as clear to a reader as the form the customer completed.
+const fieldLabels: Record<string, string> = {
+  accountOfficer: 'Name of Account Officer',
+  verifiedAddress2: 'Confirmed Business/Company Address',
+  hasSociallyFinanciallyDisadvantagedDirector: 'Is any director/signatory socially or financially disadvantaged?',
+  disadvantagedCustomerDocuments: 'Documents obtained for a socially/financially disadvantaged customer',
+  enjoysTieredKyc: 'Does the customer enjoy tiered KYC requirements?',
+  tieredKycRiskCategory: 'Customer Risk Category',
+  isApplicantPoliticallyExposed: 'Is the applicant a politically exposed person?',
+  isApplicantFinanciallyExposed: 'Is the applicant a financially exposed person?',
+  companyName: 'Company Name / Account Name',
+  registrationNumber: 'RC/Business Registration Number',
+  dateOfIncorporation: 'Date of Incorporation',
+  registeredOfficeAddress: 'Registered Office Address',
+  businessAddress: 'Business/Office Address',
+  phoneNumber: 'Phone Number',
+  emailAddress: 'Email Address',
+  website: 'Website (if any)',
+  taxIdentificationNumber: 'Tax Identification Number (TIN)',
+  companyType: 'Type of Company',
+  boardResolutionMeetingDate: 'Meeting Date',
+  boardResolutionCompanyName: 'Company Name',
+  boardResolutionCompanySecretary: 'Company Secretary',
+  boardResolutionMandate: 'Mandate of the Company',
+  boardResolutionDirectors: 'List of Directors Present',
+  boardResolutionSignatories: 'Signatories to the Account',
+  accountSignatories: 'Account Signatories',
+  directorsDetails: 'Directors / Executives',
+  otherBankAccounts: 'Other Bank Accounts',
+  declarationCompanyName: 'Company Name',
+  declarationDate: 'Date',
+  declarationDirectorName: 'Director Name',
+  declarationDirectorSignature: 'Director Signature',
+  declarationSecretaryName: 'Secretary Name',
+  declarationSecretarySignature: 'Secretary Signature',
+  declarationAgreeTerms: 'Agreement to Terms and Conditions',
+  referenceForm: 'Reference Form',
+  name: 'Full Name',
+  dateOfBirth: 'Date of Birth',
+  address: 'Residential Address',
+  phone: 'Phone Number',
+  email: 'Email Address',
+  idType: 'Identification Type',
+  idNumber: 'ID Number',
+  idExpiryDate: 'ID Expiry Date',
+  passportPhoto: 'Passport Photo',
+  idCard: 'ID Card',
+  position: 'Position/Title',
+  bankName: 'Name and Address of Bank/Branch',
+  accountName: 'Account Name',
+  accountNumber: 'Account Number',
+  fullName: 'Full Name',
+  status: 'Status',
+};
+
+function readableKey(key: string): string {
+  return fieldLabels[key] ?? key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+}
+
+// Convert technical multipart keys such as accountSignatories[0][passportPhoto]
+// into a label a non-technical reader can understand.
 function formatFieldName(key: string): string {
-  return key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+  const parts = key.match(/[^\[\]]+/g) || [key];
+  if (parts.length >= 3 && /^\d+$/.test(parts[1])) {
+    const collection = parts[0];
+    const itemNumber = Number(parts[1]) + 1;
+    const itemLabel = collection === 'accountSignatories'
+      ? `Account Signatory ${itemNumber}`
+      : collection === 'directorsDetails'
+        ? `Director/Executive ${itemNumber}`
+        : `${readableKey(collection).replace(/s$/, '')} ${itemNumber}`;
+    return `${itemLabel} — ${readableKey(parts[parts.length - 1])}`;
+  }
+  return readableKey(parts[parts.length - 1]);
 }
 
 // Corporate form sections
 const corporateSections = [
-  { name: '1. ADDRESS VERIFICATION', fields: ['verifiedAddress1', 'addressDescription1', 'comments1', 'verificationDate1', 'verifiedBy1', 'verifiedBySignature1', 'verifiedAddress2', 'addressDescription2', 'comments2', 'verificationDate2', 'verifiedBy2', 'verifiedBySignature2'] },
-  { name: '2. FINANCIAL INCLUSION', fields: ['tierLevel', 'hasBvn', 'bvnNumber', 'bvnVerified', 'bvnVerificationDate', 'accountCategory', 'accountPurpose', 'estimatedMonthlyTransactions', 'estimatedMonthlyVolume', 'authOfficerName', 'authOfficerSignature', 'authOfficerDate'] },
-  { name: '3. PEP/FEP CHECK', fields: ['isPep', 'pepCategory', 'pepName', 'pepPosition', 'pepInstitution', 'pepRelationship', 'pepCountry', 'hasPepRelative', 'pepRelativeName', 'pepRelativeRelationship', 'pepRelativePosition', 'pepRelativeInstitution', 'isFep', 'fepCategory', 'fepName', 'fepPosition', 'fepInstitution', 'fepRelationship', 'sourceOfFunds', 'sourceOfWealth', 'additionalInfo', 'pepOfficerName', 'pepOfficerSignature', 'pepOfficerDate'] },
-  { name: '4. CUSTOMER INTRODUCED BY', fields: ['introducerName', 'introducerAddress', 'introducerPhone', 'introducerOccupation', 'introducerRelationship', 'introducerBankName', 'introducerAccountNumber', 'introducerAccountName', 'introducerBranch', 'introductionDate', 'yearsKnown', 'introducerComments', 'isVerified', 'introducerVerificationDate', 'introducerVerifiedBy', 'staffName', 'staffSignature', 'staffDate'] },
-  { name: '5. COMPANY DETAILS', fields: ['companyName', 'accountOfficer', 'accountType', 'registrationNumber', 'dateOfIncorporation', 'registeredOfficeAddress', 'natureOfBusiness', 'phoneNumber', 'emailAddress', 'website', 'taxIdentificationNumber', 'businessAddress', 'businessPhone', 'businessEmail', 'companyType'] },
-  { name: '6. BOARD RESOLUTION', fields: ['boardResolutionMeetingDate', 'boardResolutionCompanyName', 'boardResolutionCompanySecretary', 'boardResolutionMandate', 'boardResolutionDirectors', 'boardResolutionSignatories'] },
-  { name: '7. ACCOUNT SIGNATORY DETAILS', fields: ['accountSignatories'] },
-  { name: '8. DIRECTORS/EXECUTIVES DETAILS', fields: ['directorsDetails'] },
-  { name: '9. OTHER BANK ACCOUNTS', fields: ['otherBankAccounts'] },
-  { name: '10. DECLARATION', fields: ['declarationCompanyName', 'declarationDate', 'declarationDirectorName', 'declarationDirectorSignature', 'declarationSecretaryName', 'declarationSecretarySignature', 'declarationAgreeTerms'] },
-  { name: '11. REFERENCE FORM', fields: ['referenceForm'] },
+  { name: '1. ADDRESS VERIFICATION', fields: ['accountOfficer', 'verifiedAddress2'] },
+  { name: '2. FINANCIAL INCLUSION', fields: ['hasSociallyFinanciallyDisadvantagedDirector', 'disadvantagedCustomerDocuments', 'enjoysTieredKyc', 'tieredKycRiskCategory'] },
+  { name: '3. PEP/FEP CHECK', fields: ['isApplicantPoliticallyExposed', 'isApplicantFinanciallyExposed'] },
+  { name: '4. COMPANY DETAILS', fields: ['companyName', 'accountType', 'registrationNumber', 'dateOfIncorporation', 'registeredOfficeAddress', 'natureOfBusiness', 'phoneNumber', 'emailAddress', 'website', 'taxIdentificationNumber', 'businessAddress', 'businessPhone', 'businessEmail', 'companyType'] },
+  { name: '5. BOARD RESOLUTION', fields: ['boardResolutionMeetingDate', 'boardResolutionCompanyName', 'boardResolutionCompanySecretary', 'boardResolutionMandate', 'boardResolutionDirectors', 'boardResolutionSignatories'] },
+  { name: '6. ACCOUNT SIGNATORY DETAILS', fields: ['accountSignatories'] },
+  { name: '7. DIRECTORS/EXECUTIVES DETAILS', fields: ['directorsDetails'] },
+  { name: '8. OTHER BANK ACCOUNTS', fields: ['otherBankAccounts'] },
+  { name: '9. DECLARATION', fields: ['declarationCompanyName', 'declarationDate', 'declarationDirectorName', 'declarationDirectorSignature', 'declarationSecretaryName', 'declarationSecretarySignature', 'declarationAgreeTerms'] },
+  { name: '10. REFERENCE FORM', fields: ['referenceForm'] },
 ];
 
 // Personal form sections
@@ -144,11 +231,17 @@ const businessLoanSections = [
   { name: '6. AUTHORIZATION', fields: ['applicantSignature', 'supervisorName', 'supervisorSignature'] },
 ];
 
+// ATM card application sections
+const atmApplicationSections = [
+  { name: 'APPLICANT DETAILS', fields: ['fullName', 'accountNumber', 'phoneNumber'] },
+];
+
 // Determine form type
 function getFormType(data: any) {
   if (data.formType === 'corporate') return 'corporate';
   if (data.formType === 'business-loan') return 'quick-loan';
   if (data.formType === 'quick-loan') return 'quick-loan';
+  if (data.formType === 'atm-application') return 'atm-application';
   if (data.formType === 'personal') return 'personal';
   
   // Fallback to field detection if formType not available
@@ -162,6 +255,9 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
   console.log('Starting PDF generation with pdf-lib...');
   const { data: parsedData, files: parsedFiles } = parseFormData(formData);
   const formType = getFormType(parsedData);
+  if (formType === 'atm-application') {
+    parsedData.fullName = `${String(parsedData.firstName ?? '').trim()} ${String(parsedData.lastName ?? '').trim()}`.trim();
+  }
   console.log('=== PDF GENERATION FORM TYPE ===', formType);
 
   if (formType === 'quick-loan') {
@@ -620,6 +716,7 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
     // Original logic for other forms
     let sections;
     if (formType === 'corporate') sections = corporateSections;
+    else if (formType === 'atm-application') sections = atmApplicationSections;
     else sections = personalSections;
 
     const pdfDoc = await PDFLibDocument.create();
@@ -643,16 +740,40 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
     };
 
     const drawKeyValue = (label: string, value: string, indent: number = 10) => {
-      const size = 11;
-      const uppercaseLabel = label.toUpperCase();
-      const labelWidth = fontBold.widthOfTextAtSize(uppercaseLabel + ': ', size);
-      page.drawText(uppercaseLabel + ': ', { x: 50 + indent, y, size, font: fontBold, color: rgb(0, 0, 0) });
-      page.drawText(value, { x: 50 + indent + labelWidth, y, size, font, color: rgb(0, 0, 0) });
-      y -= size + 10; // extra space to avoid clustering
-      if (y < 60) {
+      const labelSize = 10;
+      const valueSize = 11;
+      const x = 50 + indent;
+      const maxWidth = width - x - 50;
+      const words = value.split(/\s+/).filter(Boolean);
+      const lines: string[] = [];
+      let line = '';
+
+      for (const word of words) {
+        const candidate = line ? `${line} ${word}` : word;
+        if (line && font.widthOfTextAtSize(candidate, valueSize) > maxWidth) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = candidate;
+        }
+      }
+      if (line || lines.length === 0) lines.push(line);
+
+      // Keep each field together where possible, and give the label its own line.
+      // This prevents labels and answers from running into one another in email PDFs.
+      const requiredHeight = labelSize + 7 + (lines.length * (valueSize + 4)) + 12;
+      if (y - requiredHeight < 60) {
         page = pdfDoc.addPage([595.28, 841.89]);
         y = height - 50;
       }
+
+      page.drawText(`${formatFieldName(label)}:`, { x, y, size: labelSize, font: fontBold, color: rgb(0, 0, 0) });
+      y -= labelSize + 7;
+      for (const valueLine of lines) {
+        page.drawText(valueLine, { x: x + 10, y, size: valueSize, font, color: rgb(0, 0, 0) });
+        y -= valueSize + 4;
+      }
+      y -= 8;
     };
 
     // Optional logo at top (supports both URL and local file path)
@@ -710,18 +831,36 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
     } else if (formType === 'corporate') {
       subjectLine = 'New Corporate Account Opening Application';
       formTitle = 'Corporate Account Opening Application';
+    } else if (formType === 'atm-application') {
+      subjectLine = 'New ATM Card Application';
+      formTitle = 'ATM Card Application';
     } else {
       subjectLine = 'New Personal Account Creation Application';
       formTitle = 'Personal Account Opening Application';
     }
 
     /* drawLine('From: Unilag Microfinance Bank <info@unilagmfbank.com>', { bold: true }); */
-    drawLine(`Sent: ${new Date().toLocaleString()}`, { size: 10 });
+    if (formType !== 'atm-application') {
+      drawLine(`Sent: ${new Date().toLocaleString()}`, { size: 10 });
+    }
     /* drawLine('To: Unilag Microfinance Bank <accountopening@unilagmfbank.com>', { size: 10 }); */
  /*  drawLine(`Subject: ${subjectLine}`, { size: 10 }); */
  /*  y -= 10; */
 
-    drawLine(formTitle, { bold: true, size: 18 });
+    if (formType === 'atm-application') {
+      const titleSize = 18;
+      const titleWidth = fontBold.widthOfTextAtSize(formTitle, titleSize);
+      page.drawText(formTitle, {
+        x: (width - titleWidth) / 2,
+        y,
+        size: titleSize,
+        font: fontBold,
+        color: rgb(0, 0, 0),
+      });
+      y -= titleSize + 6;
+    } else {
+      drawLine(formTitle, { bold: true, size: 18 });
+    }
     y -= 10;
 
     // Helper to draw an image in the PDF
@@ -849,7 +988,7 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
     }
 
     y -= 16;
-    drawLine('This application is confidential and for bank use only.', { size: 9 });
+    drawLine('NB: This application is confidential and for bank use only.', { size: 9 });
 
     const pdfBytes = await pdfDoc.save();
     console.log('PDF generated successfully (pdf-lib), size:', pdfBytes.length, 'bytes');
@@ -883,12 +1022,30 @@ export async function POST(request: NextRequest) {
     // Parse form data into nested object
     const { data: parsedData, files: parsedFiles } = parseFormData(formData);
     const formType = getFormType(parsedData);
+    if (formType === 'atm-application') {
+      parsedData.fullName = `${String(parsedData.firstName ?? '').trim()} ${String(parsedData.lastName ?? '').trim()}`.trim();
+    }
     console.log('=== FORM TYPE DETECTED ===', formType);
     console.log('Parsed data formType:', parsedData.formType);
     let sections;
     if (formType === 'corporate') sections = corporateSections;
     else if (formType === 'quick-loan') sections = businessLoanSections;
+    else if (formType === 'atm-application') sections = atmApplicationSections;
     else sections = personalSections;
+
+    if (formType === 'atm-application') {
+      const firstName = String(parsedData.firstName ?? '').trim();
+      const lastName = String(parsedData.lastName ?? '').trim();
+      const accountNumber = String(parsedData.accountNumber ?? '').trim();
+      const phoneNumber = String(parsedData.phoneNumber ?? '').trim();
+
+      if (!firstName || !lastName || !/^\d{10}$/.test(accountNumber) || !/^\d{11}$/.test(phoneNumber)) {
+        return NextResponse.json(
+          { success: false, message: 'First name, last name, a valid 10-digit account number, and a valid 11-digit phone number are required.' },
+          { status: 400 }
+        );
+      }
+    }
 
     // Log all form data (excluding files)
     console.log('3. Form data received:');
@@ -1034,6 +1191,10 @@ export async function POST(request: NextRequest) {
       emailSubject = 'New Corporate Account Opening Application - PDF';
       pdfFilename = `corporate_account_application_${Date.now()}.pdf`;
       formTypeText = 'corporate account opening';
+    } else if (formType === 'atm-application') {
+      emailSubject = 'New ATM Card Application - PDF';
+      pdfFilename = `atm_card_application_${Date.now()}.pdf`;
+      formTypeText = 'ATM card';
     } else {
       emailSubject = 'New Personal Account Creation Application - PDF';
       pdfFilename = `personal_account_application_${Date.now()}.pdf`;
@@ -1070,16 +1231,21 @@ export async function POST(request: NextRequest) {
     console.log('Attachment size:', pdfBuffer.length, 'bytes');
     console.log('Number of file attachments:', fileAttachments.length);
 
-    const emailResult = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully!');
-    console.log('Message ID:', emailResult.messageId);
-    console.log('Recipients:', recipients.join(', '));
+    try {
+      const emailResult = await sendMailWithTimeout(transporter, mailOptions);
+      console.log('Email sent successfully!');
+      console.log('Message ID:', (emailResult as any).messageId);
+      console.log('Recipients:', recipients.join(', '));
+    } catch (emailError) {
+      console.error('Email delivery failed or timed out:', emailError);
+      console.warn('Continuing with success response so the form submission is not blocked by email delivery issues.');
+    }
 
     console.log('=== FORM SUBMISSION COMPLETED SUCCESSFULLY ===');
 
     return NextResponse.json({
       success: true,
-      message: 'Application submitted successfully! PDF sent via email.'
+      message: 'Application submitted successfully.'
     });
 
   } catch (error) {

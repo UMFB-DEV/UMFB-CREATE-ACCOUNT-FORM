@@ -7,6 +7,7 @@ const QuickLoanApplicationForm = memo(function QuickLoanApplicationForm() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phoneErrors, setPhoneErrors] = useState<Record<string, string>>({});
 
   const initialFormData = {
     // Client Information
@@ -90,6 +91,12 @@ const QuickLoanApplicationForm = memo(function QuickLoanApplicationForm() {
 
   const updateField = useCallback((name: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [name]: value }));
+    setPhoneErrors((prev) => {
+      if (!prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
   }, []);
 
   const steps = [
@@ -99,7 +106,43 @@ const QuickLoanApplicationForm = memo(function QuickLoanApplicationForm() {
     { id: 4, title: 'Authorization' },
   ];
 
+  const validatePersonalInfoPhoneNumbers = () => {
+    const phoneFields = [
+      { key: 'telephone_1', label: 'Telephone Number 1' },
+      { key: 'telephone_2', label: 'Telephone Number 2' },
+      { key: 'spouse_telephone_1', label: 'Spouse Telephone Number 1' },
+      { key: 'spouse_telephone_2', label: 'Spouse Telephone Number 2' },
+      { key: 'next_of_kin_tel', label: 'Next of Kin Telephone Number' },
+    ];
+
+    const invalidField = phoneFields.find(({ key }) => {
+      const value = String(formData[key] || '');
+      return value.length > 0 && value.length !== 11;
+    });
+
+    if (invalidField) {
+      setPhoneErrors({
+        [invalidField.key]: `${invalidField.label} must be exactly 11 digits, or left blank.`,
+      });
+      requestAnimationFrame(() => {
+        const input = document.getElementById(invalidField.key);
+        input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (input instanceof HTMLInputElement) {
+          input.focus();
+        }
+      });
+      return false;
+    }
+
+    setPhoneErrors({});
+    return true;
+  };
+
   const nextStep = () => {
+    if (currentStep === 1 && !validatePersonalInfoPhoneNumbers()) {
+      return;
+    }
+
     if (currentStep < steps.length) {
       setCurrentStep((value) => value + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -157,7 +200,7 @@ const QuickLoanApplicationForm = memo(function QuickLoanApplicationForm() {
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 1:
-        return <PersonalInfoSection formData={formData} updateField={updateField} />;
+        return <PersonalInfoSection formData={formData} updateField={updateField} phoneErrors={phoneErrors} />;
       case 2:
         return <BusinessInfoSection formData={formData} updateField={updateField} />;
       case 3:
@@ -248,7 +291,7 @@ const QuickLoanApplicationForm = memo(function QuickLoanApplicationForm() {
   );
 });
 
-const PersonalInfoSection = memo(function PersonalInfoSection({ formData, updateField }: any) {
+const PersonalInfoSection = memo(function PersonalInfoSection({ formData, updateField, phoneErrors }: any) {
   return (
     <section className="space-y-6">
       <div>
@@ -406,23 +449,42 @@ const PersonalInfoSection = memo(function PersonalInfoSection({ formData, update
         <div>
           <label className="block font-semibold text-sm mb-1 text-gray-700">Telephone Number 1 <span className="text-red-500">*</span></label>
           <input
+            id="telephone_1"
             type="tel"
             value={formData.telephone_1}
-            onChange={(e) => updateField('telephone_1', e.target.value)}
+            onChange={(e) => updateField('telephone_1', e.target.value.replace(/\D/g, '').slice(0, 11))}
             placeholder="Enter telephone number"
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#7B3434] focus:border-transparent text-sm text-black"
-            required
+            inputMode="numeric"
+            pattern="[0-9]{11}"
+            maxLength={11}
+            title="Phone number must be exactly 11 digits"
+            className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#7B3434] focus:border-transparent text-sm text-black ${
+              phoneErrors.telephone_1 ? 'border-red-500 bg-red-50' : 'border-gray-300'
+            }`}
           />
+          {phoneErrors.telephone_1 && (
+            <p className="mt-1 text-sm font-medium text-red-600">{phoneErrors.telephone_1}</p>
+          )}
         </div>
         <div>
           <label className="block font-semibold text-sm mb-1 text-gray-700">Telephone Number 2</label>
           <input
+            id="telephone_2"
             type="tel"
             value={formData.telephone_2}
-            onChange={(e) => updateField('telephone_2', e.target.value)}
+            onChange={(e) => updateField('telephone_2', e.target.value.replace(/\D/g, '').slice(0, 11))}
             placeholder="Enter second telephone number"
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#7B3434] focus:border-transparent text-sm text-black"
+            inputMode="numeric"
+            pattern="[0-9]{11}"
+            maxLength={11}
+            title="Phone number must be exactly 11 digits"
+            className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#7B3434] focus:border-transparent text-sm text-black ${
+              phoneErrors.telephone_2 ? 'border-red-500 bg-red-50' : 'border-gray-300'
+            }`}
           />
+          {phoneErrors.telephone_2 && (
+            <p className="mt-1 text-sm font-medium text-red-600">{phoneErrors.telephone_2}</p>
+          )}
         </div>
         <div>
           <label className="block font-semibold text-sm mb-1 text-gray-700">Marital Status <span className="text-red-500">*</span></label>
@@ -561,22 +623,42 @@ const PersonalInfoSection = memo(function PersonalInfoSection({ formData, update
           <div>
             <label className="block font-semibold text-sm mb-1 text-gray-700">Telephone Number 1</label>
             <input
+              id="spouse_telephone_1"
               type="tel"
               value={formData.spouse_telephone_1}
-              onChange={(e) => updateField('spouse_telephone_1', e.target.value)}
+              onChange={(e) => updateField('spouse_telephone_1', e.target.value.replace(/\D/g, '').slice(0, 11))}
               placeholder="Enter telephone number"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#7B3434] focus:border-transparent text-sm text-black"
+              inputMode="numeric"
+              pattern="[0-9]{11}"
+              maxLength={11}
+              title="Phone number must be exactly 11 digits"
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#7B3434] focus:border-transparent text-sm text-black ${
+                phoneErrors.spouse_telephone_1 ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              }`}
             />
+            {phoneErrors.spouse_telephone_1 && (
+              <p className="mt-1 text-sm font-medium text-red-600">{phoneErrors.spouse_telephone_1}</p>
+            )}
           </div>
           <div>
             <label className="block font-semibold text-sm mb-1 text-gray-700">Telephone Number 2</label>
             <input
+              id="spouse_telephone_2"
               type="tel"
               value={formData.spouse_telephone_2}
-              onChange={(e) => updateField('spouse_telephone_2', e.target.value)}
+              onChange={(e) => updateField('spouse_telephone_2', e.target.value.replace(/\D/g, '').slice(0, 11))}
               placeholder="Enter second telephone number"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#7B3434] focus:border-transparent text-sm text-black"
+              inputMode="numeric"
+              pattern="[0-9]{11}"
+              maxLength={11}
+              title="Phone number must be exactly 11 digits"
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#7B3434] focus:border-transparent text-sm text-black ${
+                phoneErrors.spouse_telephone_2 ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              }`}
             />
+            {phoneErrors.spouse_telephone_2 && (
+              <p className="mt-1 text-sm font-medium text-red-600">{phoneErrors.spouse_telephone_2}</p>
+            )}
           </div>
         </div>
       </div>
@@ -622,13 +704,22 @@ const PersonalInfoSection = memo(function PersonalInfoSection({ formData, update
           <div>
             <label className="block font-semibold text-sm mb-1 text-gray-700">Telephone Number <span className="text-red-500">*</span></label>
             <input
+              id="next_of_kin_tel"
               type="tel"
               value={formData.next_of_kin_tel}
-              onChange={(e) => updateField('next_of_kin_tel', e.target.value)}
+              onChange={(e) => updateField('next_of_kin_tel', e.target.value.replace(/\D/g, '').slice(0, 11))}
               placeholder="Enter telephone number"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#7B3434] focus:border-transparent text-sm text-black"
-              required
+              inputMode="numeric"
+              pattern="[0-9]{11}"
+              maxLength={11}
+              title="Phone number must be exactly 11 digits"
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#7B3434] focus:border-transparent text-sm text-black ${
+                phoneErrors.next_of_kin_tel ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              }`}
             />
+            {phoneErrors.next_of_kin_tel && (
+              <p className="mt-1 text-sm font-medium text-red-600">{phoneErrors.next_of_kin_tel}</p>
+            )}
           </div>
         </div>
       </div>

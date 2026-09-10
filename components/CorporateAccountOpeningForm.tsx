@@ -19,6 +19,12 @@ const initialFormData = {
   verificationDate2: '',
   verifiedBy2: '',
   verifiedBySignature2: '',
+  hasSociallyFinanciallyDisadvantagedDirector: '',
+  disadvantagedCustomerDocuments: '',
+  enjoysTieredKyc: '',
+  tieredKycRiskCategory: '',
+  isApplicantPoliticallyExposed: '',
+  isApplicantFinanciallyExposed: '',
   tierLevel: '',
   hasBvn: false,
   bvnNumber: '',
@@ -89,6 +95,14 @@ const initialFormData = {
   businessPhone: '',
   businessEmail: '',
   companyType: '',
+  annualTurnover: '',
+  annualCurrency: '',
+  servicesRequired: [] as string[],
+  chequeConfirmation: '',
+  chequeThreshold: '',
+  withdrawalLimit: '',
+  transactionLimit: '',
+  dualAuthorisation: false,
   accountType: '',
   boardResolutionMeetingDate: '',
   boardResolutionCompanyName: '',
@@ -143,6 +157,33 @@ const initialFormData = {
       status: 'active',
     },
   ],
+  setOffCompanyName: '',
+  setOffDate: '',
+  setOffDirectorName: '',
+  setOffDirectorSignature: '',
+  setOffWitnessName: '',
+  setOffWitnessSignature: '',
+  soleProprietorName: '',
+  soleProprietorDateOfBirth: '',
+  soleProprietorNationality: '',
+  soleProprietorOccupation: '',
+  soleProprietorAddress: '',
+  soleProprietorPhone: '',
+  soleProprietorEmail: '',
+  soleProprietorBusinessName: '',
+  soleProprietorBusinessRegistrationNumber: '',
+  soleProprietorBusinessAddress: '',
+  soleProprietorBusinessPhone: '',
+  soleProprietorYearsInBusiness: '',
+  soleProprietorIdType: '',
+  soleProprietorIdNumber: '',
+  soleProprietorIdExpiryDate: '',
+  authorizedSignatory1: '',
+  authorizedSignatory1Date: '',
+  authorizedSignatory1Signature: '',
+  authorizedSignatory2: '',
+  authorizedSignatory2Date: '',
+  authorizedSignatory2Signature: '',
   declarationCompanyName: '',
   declarationDate: '',
   declarationDirectorName: '',
@@ -237,6 +278,7 @@ const InputRow = memo(function InputRow({
         type={type}
         name={name}
         value={value != null ? String(value) : ''}
+        required={required}
         placeholder={placeholder}
         onChange={(event) => onChange(name, event.target.value)}
         autoComplete="off"
@@ -273,6 +315,7 @@ const TextAreaRow = memo(function TextAreaRow({
       <textarea
         name={name}
         value={value ?? ''}
+        required={required}
         placeholder={placeholder}
         rows={rows}
         onChange={(event) => onChange(name, event.target.value)}
@@ -307,6 +350,7 @@ const SelectRow = memo(function SelectRow({
       <select
         name={name}
         value={value ?? ''}
+        required={required}
         onChange={(event) => onChange(name, event.target.value)}
         className="rounded-2xl border border-gray-300 px-4 py-3 text-sm text-black outline-none transition focus:border-[#7B3434] focus:shadow-sm"
       >
@@ -354,14 +398,6 @@ const AddressVerificationSection = memo(function AddressVerificationSection({
     <section className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-[#7B3434]">A. ADDRESS VERIFICATION / VISITATION DETAILS</h2>
-      </div>
-
-      {/* Instructions */}
-      <div className="bg-white p-6 rounded-2xl border-2 border-[#ACD23C]">
-        <h3 className="text-lg font-bold text-[#7B3434] mb-2">IMPORTANT INSTRUCTIONS</h3>
-        <p className="text-gray-700 text-sm md:text-base">
-          Get the required details from your relationship officer for this section to proceed
-        </p>
       </div>
 
       <div className="space-y-6">
@@ -496,82 +532,109 @@ const FinancialInclusionAuthenticationSection = memo(function FinancialInclusion
         <h2 className="text-2xl font-bold text-[#7B3434]">B. AUTHENTICATION FOR FINANCIAL INCLUSION</h2>
       </div>
 
-      {/* Instructions */}
-      <div className="bg-white p-6 rounded-2xl border-2 border-[#ACD23C]">
-        <h3 className="text-lg font-bold text-[#7B3434] mb-2">IMPORTANT INSTRUCTIONS</h3>
-        <p className="text-gray-700 text-sm md:text-base">
-          Get the required details from your relationship officer for this section to proceed
-        </p>
-      </div>
-
       <div className="grid gap-6 lg:grid-cols-2">
-        <SelectRow
-          label="Financial Inclusion Tier Level"
-          name="tierLevel"
-          value={formData.tierLevel}
-          options={[
-            { value: 'tier0', label: 'Tier 0 - No account' },
-            { value: 'tier1', label: 'Tier 1 - Basic account' },
-            { value: 'tier2', label: 'Tier 2 - Intermediate account' },
-            { value: 'tier3', label: 'Tier 3 - Full account' },
-          ]}
-          required
-          onChange={updateField}
-        />
-        <SelectRow
-          label="Account Category"
-          name="accountCategory"
-          value={formData.accountCategory}
-          options={[
-            { value: 'individual', label: 'Individual' },
-            { value: 'corporate', label: 'Corporate' },
-            { value: 'sme', label: 'SME' },
-            { value: 'farmer', label: 'Farmer' },
-            { value: 'trader', label: 'Trader' },
-            { value: 'others', label: 'Others' },
-          ]}
-          required
-          onChange={updateField}
-        />
-
         <div className="lg:col-span-2">
-          <CheckboxRow
-            label="Customer has BVN (Bank Verification Number)"
-            name="hasBvn"
-            checked={formData.hasBvn}
+          <SelectRow
+            label="i. Is any director/signatory to the account socially or financially disadvantaged?"
+            name="hasSociallyFinanciallyDisadvantagedDirector"
+            value={formData.hasSociallyFinanciallyDisadvantagedDirector}
+            options={[
+              { value: 'yes', label: 'Yes' },
+              { value: 'no', label: 'No' },
+            ]}
+            required
             onChange={updateField}
           />
         </div>
 
-        {formData.hasBvn && (
-          <>
-            <InputRow
-              label="BVN Number"
-              name="bvnNumber"
-              value={formData.bvnNumber}
-              placeholder="Enter 11-digit BVN"
-              maxLength={11}
+        {formData.hasSociallyFinanciallyDisadvantagedDirector === 'yes' && (
+          <div className="lg:col-span-2">
+            <TextAreaRow
+              label="ii. If the answer to i above is YES, state other documents obtained in line with the Bank's policy on socially/financially disadvantaged customer in compliance with regulation 77 (4) of AML/CFT Regulation 2013."
+              name="disadvantagedCustomerDocuments"
+              value={formData.disadvantagedCustomerDocuments}
+              placeholder="State documents obtained"
+              onChange={updateField}
+              rows={3}
+              required
+            />
+          </div>
+        )}
+
+        <div className="lg:col-span-2">
+          <SelectRow
+            label="iii. Does the customer enjoy tiered KYC requirements?"
+            name="enjoysTieredKyc"
+            value={formData.enjoysTieredKyc}
+            options={[
+              { value: 'yes', label: 'Yes' },
+              { value: 'no', label: 'No' },
+            ]}
+            required
+            onChange={updateField}
+          />
+        </div>
+
+        {formData.enjoysTieredKyc === 'yes' && (
+          <div className="lg:col-span-2">
+            <SelectRow
+              label="iv. If answer to question iii above is YES, identify the customer risk category."
+              name="tieredKycRiskCategory"
+              value={formData.tieredKycRiskCategory}
+              options={[
+                { value: 'low_risk', label: 'LOW RISK' },
+                { value: 'medium_risk', label: 'MEDIUM RISK' },
+                { value: 'high_risk', label: 'HIGH RISK' },
+              ]}
               required
               onChange={updateField}
             />
-            <InputRow
-              label="BVN Verification Date"
-              name="bvnVerificationDate"
-              value={formData.bvnVerificationDate}
-              type="date"
-              onChange={updateField}
-            />
-            <div className="lg:col-span-2">
-              <CheckboxRow
-                label="BVN Verified"
-                name="bvnVerified"
-                checked={formData.bvnVerified}
-                onChange={updateField}
-              />
-            </div>
-          </>
+          </div>
         )}
+      </div>
+    </section>
+  );
+});
 
+const PoliticallyExposedPersonsSection = memo(function PoliticallyExposedPersonsSection({
+  formData,
+  updateField,
+}: any) {
+  return (
+    <section className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-[#7B3434]">C. AUTHENTICATION FOR POLITICALLY / FINANCIALLY EXPOSED PERSONS</h2>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SelectRow
+          label="Is the applicant a politically exposed person?"
+          name="isApplicantPoliticallyExposed"
+          value={formData.isApplicantPoliticallyExposed}
+          options={[
+            { value: 'yes', label: 'Yes' },
+            { value: 'no', label: 'No' },
+          ]}
+          required
+          onChange={updateField}
+        />
+        <SelectRow
+          label="Is the applicant a financially exposed person?"
+          name="isApplicantFinanciallyExposed"
+          value={formData.isApplicantFinanciallyExposed}
+          options={[
+            { value: 'yes', label: 'Yes' },
+            { value: 'no', label: 'No' },
+          ]}
+          required
+          onChange={updateField}
+        />
+      </div>
+    </section>
+  );
+});
+
+/*
         <div className="lg:col-span-2">
           <TextAreaRow
             label="Account Purpose"
@@ -634,7 +697,9 @@ const FinancialInclusionAuthenticationSection = memo(function FinancialInclusion
     </section>
   );
 });
+*/
 
+/*
 const PoliticallyExposedPersonsSection = memo(function PoliticallyExposedPersonsSection({
   formData,
   updateField,
@@ -643,14 +708,6 @@ const PoliticallyExposedPersonsSection = memo(function PoliticallyExposedPersons
     <section className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-[#7B3434]">C. AUTHENTICATION FOR POLITICALLY / FINANCIALLY EXPOSED PERSONS</h2>
-      </div>
-
-      {/* Instructions */}
-      <div className="bg-white p-6 rounded-2xl border-2 border-[#ACD23C]">
-        <h3 className="text-lg font-bold text-[#7B3434] mb-2">IMPORTANT INSTRUCTIONS</h3>
-        <p className="text-gray-700 text-sm md:text-base">
-          Get the required details from your relationship officer for this section to proceed
-        </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -886,6 +943,50 @@ const PoliticallyExposedPersonsSection = memo(function PoliticallyExposedPersons
   );
 });
 
+*/
+const CorporateVerificationAuthenticationStep = memo(function CorporateVerificationAuthenticationStep({
+  formData,
+  updateField,
+}: any) {
+  return (
+    <div className="space-y-10">
+      <div className="rounded-2xl border border-[#ACD23C] bg-[#f9fce8] px-4 py-3 text-sm text-gray-700">
+        <strong className="text-[#7B3434]">For Bank Use Only:</strong> Contact your Relationship Officer or leave blank.
+      </div>
+
+      <section className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-[#7B3434]">A. ADDRESS VERIFICATION</h2>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <InputRow
+            label="Name of Account Officer"
+            name="accountOfficer"
+            value={formData.accountOfficer}
+            required
+            placeholder="Enter account officer name"
+            onChange={updateField}
+          />
+          <div className="lg:col-span-2">
+            <TextAreaRow
+              label="I hereby confirm the existence of the Business office/company address at"
+              name="verifiedAddress2"
+              value={formData.verifiedAddress2}
+              required
+              placeholder="Enter the confirmed business/company address"
+              onChange={updateField}
+              rows={3}
+            />
+          </div>
+        </div>
+      </section>
+
+      <FinancialInclusionAuthenticationSection formData={formData} updateField={updateField} />
+      <PoliticallyExposedPersonsSection formData={formData} updateField={updateField} />
+    </div>
+  );
+});
+
 const CustomerIntroducedBySection = memo(function CustomerIntroducedBySection({
   formData,
   updateField,
@@ -894,14 +995,6 @@ const CustomerIntroducedBySection = memo(function CustomerIntroducedBySection({
     <section className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-[#7B3434]">D. CUSTOMER INTRODUCED BY</h2>
-      </div>
-
-      {/* Instructions */}
-      <div className="bg-white p-6 rounded-2xl border-2 border-[#ACD23C]">
-        <h3 className="text-lg font-bold text-[#7B3434] mb-2">IMPORTANT INSTRUCTIONS</h3>
-        <p className="text-gray-700 text-sm md:text-base">
-          Get the required details from your relationship officer for this section to proceed
-        </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -1084,7 +1177,6 @@ const CompanyDetailsSection = memo(function CompanyDetailsSection({ formData, up
       <div className="grid gap-6 lg:grid-cols-2">
         <InputRow label="Company Name / Account Name" name="companyName" value={formData.companyName} required placeholder="Enter company name / account name" onChange={updateField} />
         <SelectRow label="Account Type" name="accountType" value={formData.accountType} options={accountTypeOptions} required onChange={updateField} />
-        <InputRow label="Account Officer" name="accountOfficer" value={formData.accountOfficer} placeholder="Enter account officer name" onChange={updateField} />
         <InputRow label="RC/Business Registration Number" name="registrationNumber" value={formData.registrationNumber} required placeholder="Enter registration number" onChange={updateField} />
         <InputRow label="Date of Incorporation" name="dateOfIncorporation" value={formData.dateOfIncorporation} type="date" onChange={updateField} />
         <TextAreaRow label="Registered Office Address" name="registeredOfficeAddress" value={formData.registeredOfficeAddress} required placeholder="Enter registered office address" onChange={updateField} rows={4} />
@@ -1904,16 +1996,16 @@ const ReferenceFormSection = memo(function ReferenceFormSection({ formData, upda
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="lg:col-span-2">
           <div className="flex flex-wrap gap-4">
-            <button
-              type="button"
-              onClick={handleDownloadTemplate}
+            <a
+              href="/Referee_Form.pdf"
+              download="Referee_Form.pdf"
               className="flex items-center gap-2 rounded-full bg-[#ACD23C] px-6 py-3 text-sm font-semibold text-gray-900 transition hover:bg-[#9bb82a]"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               Download Reference Form Template
-            </button>
+            </a>
           </div>
         </div>
         <div className="lg:col-span-2">
@@ -1991,7 +2083,7 @@ const BankUseChecklistSection = memo(function BankUseChecklistSection() {
       <div className="bg-white p-6 rounded-2xl border-2 border-[#ACD23C]">
         <h3 className="text-lg font-bold text-[#7B3434] mb-2">IMPORTANT INSTRUCTIONS</h3>
         <p className="text-gray-700 text-sm md:text-base">
-          <strong className="text-[#7B3434]">FOR BANK USE ONLY</strong> – Please ignore this section and proceed to the next step (Company Details). This checklist is for internal bank use only.
+          <strong className="text-[#7B3434]">FOR BANK USE ONLY</strong> – Please ignore this section and proceed to the next step (Company Details). This checklist is for internal bank use only. For Bank Use Only: Contact your Relationship Officer or leave blank.
         </p>
       </div>
 
@@ -2046,7 +2138,7 @@ const BankUseChecklistSection = memo(function BankUseChecklistSection() {
       <div className="bg-white p-4 md:p-6 rounded-2xl shadow-md border border-gray-200">
         <h3 className="text-lg md:text-xl font-bold text-[#7B3434] mb-3">COMMENTS</h3>
         <div className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-50 text-gray-600">
-          For Bank Use Only
+          For Bank Use Only: Contact your Relationship Officer or leave blank.
         </div>
       </div>
 
@@ -2125,17 +2217,14 @@ export function CorporateAccountOpeningForm() {
   }, []);
 
   const steps = [
-    { id: 1, title: 'Address Verification' },
-    { id: 2, title: 'Financial Inclusion' },
-    { id: 3, title: 'PEP/FEP Check' },
-    { id: 4, title: 'Customer Introduced By' },
-    { id: 5, title: 'Company Details' },
-    { id: 6, title: 'Board Resolution' },
-    { id: 7, title: 'Signatory Details' },
-    { id: 8, title: 'Directors Details' },
-    { id: 9, title: 'Other Bank Accounts' },
-    { id: 10, title: 'Declaration' },
-    { id: 11, title: 'Reference Form' },
+    { id: 1, title: 'Address Verification & Authentication' },
+    { id: 2, title: 'Company Details' },
+    { id: 3, title: 'Board Resolution' },
+    { id: 4, title: 'Signatory Details' },
+    { id: 5, title: 'Directors Details' },
+    { id: 6, title: 'Other Bank Accounts' },
+    { id: 7, title: 'Declaration' },
+    { id: 8, title: 'Reference Form' },
   ];
 
   const nextStep = () => {
@@ -2168,6 +2257,8 @@ export function CorporateAccountOpeningForm() {
       // Helper function to flatten nested data
       const addToFormData = (data: any, prefix: string = '') => {
         for (const [key, value] of Object.entries(data)) {
+          // Row IDs only help React render the form; they are not application data.
+          if (key === 'id') continue;
           const newKey = prefix ? `${prefix}[${key}]` : key;
           
           if (Array.isArray(value)) {
@@ -2214,26 +2305,20 @@ export function CorporateAccountOpeningForm() {
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 1:
-        return <AddressVerificationSection formData={formData} updateField={updateField} />;
+        return <CorporateVerificationAuthenticationStep formData={formData} updateField={updateField} />;
       case 2:
-        return <FinancialInclusionAuthenticationSection formData={formData} updateField={updateField} />;
-      case 3:
-        return <PoliticallyExposedPersonsSection formData={formData} updateField={updateField} />;
-      case 4:
-        return <CustomerIntroducedBySection formData={formData} updateField={updateField} />;
-      case 5:
         return <CompanyDetailsSection formData={formData} updateField={updateField} />;
-      case 6:
+      case 3:
         return <BoardResolutionSection formData={formData} updateField={updateField} updateArrayItem={updateArrayItem} />;
-      case 7:
+      case 4:
         return <AccountSignatoryDetailsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
-      case 8:
+      case 5:
         return <DirectorsDetailsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
-      case 9:
+      case 6:
         return <OtherBankAccountsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
-      case 10:
+      case 7:
         return <DeclarationSection formData={formData} updateField={updateField} />;
-      case 11:
+      case 8:
         return <ReferenceFormSection formData={formData} updateField={updateField} />;
       default:
         return null;
