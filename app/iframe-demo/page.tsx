@@ -20,13 +20,12 @@ export default function IframeDemo() {
               style={{
                 position: 'relative',
                 width: '100%',
-                height: '0',
-                paddingBottom: '75%',
+                height: '900px',
                 overflow: 'hidden'
               }}
             >
               <iframe
-                src="/"
+                src="/atm-application"
                 style={{
                   position: 'absolute',
                   top: '0',
@@ -35,7 +34,7 @@ export default function IframeDemo() {
                   height: '100%',
                   border: 'none'
                 }}
-                title="Account Opening Form"
+                title="ATM Card Application"
               />
             </div>
           </div>
@@ -49,11 +48,12 @@ export default function IframeDemo() {
             Use this code in your WordPress page or post editor:
           </p>
           <pre className="bg-blue-100 p-4 rounded text-sm overflow-x-auto">
-{`<div style="position: relative; width: 100%; height: 0; padding-bottom: 75%; overflow: hidden;">
+{`<div style="width: 100%; overflow: hidden;">
   <iframe
-    src="https://your-domain.vercel.app"
-    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;"
-    title="Account Opening Form">
+    src="https://your-domain.vercel.app/atm-application"
+    style="display: block; width: 100%; height: 900px; border: none;"
+    scrolling="no"
+    title="ATM Card Application">
   </iframe>
 </div>`}
           </pre>

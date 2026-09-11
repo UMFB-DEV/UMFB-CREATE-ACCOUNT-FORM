@@ -6,7 +6,6 @@ const fileSchema = z
   .refine((file) => file.size <= 5 * 1024 * 1024, {
     message: 'File size must be less than 5MB',
   });
-
 // File type validation helpers
 const imageTypes = ['image/jpeg', 'image/jpg', 'image/png'];
 const documentTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
@@ -111,6 +110,22 @@ export const contactFormSchema = personalInfoSchema
     honeypot: z.string().optional(), // Anti-spam honeypot field
   });
 
+export const atmApplicationSchema = z.object({
+  firstName: z
+    .string()
+    .trim()
+    .min(1, 'First name is required')
+    .regex(/^[\p{L}\p{M}' -]+$/u, 'First name can only contain letters, spaces, apostrophes, and hyphens'),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, 'Last name is required')
+    .regex(/^[\p{L}\p{M}' -]+$/u, 'Last name can only contain letters, spaces, apostrophes, and hyphens'),
+  accountNumber: z.string().trim().regex(/^\d{10}$/, 'Account number must be exactly 10 digits'),
+  phoneNumber: z.string().trim().regex(/^\d{11}$/, 'Phone number must be exactly 11 digits'),
+  honeypot: z.string().optional(),
+});
+
 // Type definitions
 export type PersonalInfo = z.infer<typeof personalInfoSchema>;
 export type EmploymentInfo = z.infer<typeof employmentInfoSchema>;
@@ -118,3 +133,4 @@ export type NextOfKin = z.infer<typeof nextOfKinSchema>;
 export type SpouseInfo = z.infer<typeof spouseInfoSchema>;
 export type FileUploads = z.infer<typeof fileUploadsSchema>;
 export type ContactForm = z.infer<typeof contactFormSchema>;
+export type AtmApplication = z.infer<typeof atmApplicationSchema>;

@@ -5,6 +5,7 @@ import { PDFDocument as PDFLibDocument, StandardFonts, rgb } from 'pdf-lib';
 import fetch from 'node-fetch';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { atmApplicationSchema } from '@/lib/validation';
 
 console.log('=== API ROUTE LOADED ===');
 console.log('Environment check:');
@@ -744,6 +745,36 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
       const valueSize = 11;
       const x = 50 + indent;
       const maxWidth = width - x - 50;
+
+      if (formType === 'atm-application') {
+        const formattedLabel = `${formatFieldName(label)}:`;
+        const labelWidth = fontBold.widthOfTextAtSize(formattedLabel, labelSize);
+        const requiredHeight = valueSize + 16;
+
+        if (y - requiredHeight < 60) {
+          page = pdfDoc.addPage([595.28, 841.89]);
+          y = height - 50;
+        }
+
+        page.drawText(formattedLabel, {
+          x,
+          y,
+          size: labelSize,
+          font: fontBold,
+          color: rgb(0, 0, 0),
+        });
+        page.drawText(value, {
+          x: x + labelWidth + 7,
+          y,
+          size: valueSize,
+          font,
+          color: rgb(0, 0, 0),
+          maxWidth: maxWidth - labelWidth - 7,
+        });
+        y -= requiredHeight;
+        return;
+      }
+
       const words = value.split(/\s+/).filter(Boolean);
       const lines: string[] = [];
       let line = '';
@@ -850,11 +881,18 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
     if (formType === 'atm-application') {
       const titleSize = 18;
       const titleWidth = fontBold.widthOfTextAtSize(formTitle, titleSize);
+      const titleX = (width - titleWidth) / 2;
       page.drawText(formTitle, {
-        x: (width - titleWidth) / 2,
+        x: titleX,
         y,
         size: titleSize,
         font: fontBold,
+        color: rgb(0, 0, 0),
+      });
+      page.drawLine({
+        start: { x: titleX, y: y - 3 },
+        end: { x: titleX + titleWidth, y: y - 3 },
+        thickness: 1,
         color: rgb(0, 0, 0),
       });
       y -= titleSize + 6;
@@ -1034,14 +1072,13 @@ export async function POST(request: NextRequest) {
     else sections = personalSections;
 
     if (formType === 'atm-application') {
-      const firstName = String(parsedData.firstName ?? '').trim();
-      const lastName = String(parsedData.lastName ?? '').trim();
-      const accountNumber = String(parsedData.accountNumber ?? '').trim();
-      const phoneNumber = String(parsedData.phoneNumber ?? '').trim();
-
-      if (!firstName || !lastName || !/^\d{10}$/.test(accountNumber) || !/^\d{11}$/.test(phoneNumber)) {
+      const validationResult = atmApplicationSchema.safeParse(parsedData);
+      if (!validationResult.success) {
         return NextResponse.json(
-          { success: false, message: 'First name, last name, a valid 10-digit account number, and a valid 11-digit phone number are required.' },
+          {
+            success: false,
+            message: validationResult.error.issues[0]?.message || 'Invalid ATM application details.',
+          },
           { status: 400 }
         );
       }
@@ -1149,13 +1186,17 @@ export async function POST(request: NextRequest) {
 
     // Parse multiple email addresses (comma-separated)
     console.log('6. Parsing email recipients...');
-    const recipientsEnv = formType === 'quick-loan' ? process.env.LOAN_EMAIL_TO : process.env.EMAIL_TO;
+    const recipientsEnv = formType === 'quick-loan'
+      ? process.env.LOAN_EMAIL_TO
+      : formType === 'atm-application'
+        ? process.env.ATM_EMAIL_TO
+        : process.env.EMAIL_TO;
     const recipients = recipientsEnv
       ? recipientsEnv.split(',').map(email => email.trim()).filter(email => email && email.includes('@'))
       : [];
 
     // Fallback to EMAIL_USER if no valid recipients
-    if (recipients.length === 0 && process.env.EMAIL_USER) {
+    if (recipients.length === 0 && process.env.EMAIL_USER && formType !== 'atm-application') {
       recipients.push(process.env.EMAIL_USER);
     }
 

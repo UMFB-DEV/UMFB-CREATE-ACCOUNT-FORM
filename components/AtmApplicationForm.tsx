@@ -1,19 +1,33 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { atmApplicationSchema, type AtmApplication } from '@/lib/validation';
 
 export function AtmApplicationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<AtmApplication>({
+    resolver: zodResolver(atmApplicationSchema),
+    mode: 'onBlur',
+    defaultValues: { honeypot: '' },
+  });
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submitApplication(data: AtmApplication) {
     setError('');
     setIsSubmitting(true);
 
     try {
-      const formData = new FormData(event.currentTarget);
+      const formData = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) formData.append(key, value);
+      });
       formData.append('formType', 'atm-application');
 
       const response = await fetch('/api/submit-form', {
@@ -51,27 +65,30 @@ export function AtmApplicationForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto mt-6 max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-lg sm:p-8">
+    <form onSubmit={handleSubmit(submitApplication)} noValidate className="mx-auto mt-6 max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-lg sm:p-8">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
           <label htmlFor="firstName" className="mb-1 block text-sm font-semibold text-gray-700">
             First Name <span className="text-red-500">*</span>
           </label>
-          <input id="firstName" name="firstName" type="text" autoComplete="given-name" required className="w-full rounded border border-gray-300 px-3 py-3 text-black outline-none focus:border-transparent focus:ring-2 focus:ring-[#7B3434]" />
+          <input id="firstName" type="text" autoComplete="given-name" aria-invalid={Boolean(errors.firstName)} {...register('firstName')} className="w-full rounded border border-gray-300 px-3 py-3 text-black outline-none focus:border-transparent focus:ring-2 focus:ring-[#7B3434]" />
+          {errors.firstName && <p className="mt-1 text-sm text-red-600">{errors.firstName.message}</p>}
         </div>
 
         <div>
           <label htmlFor="lastName" className="mb-1 block text-sm font-semibold text-gray-700">
             Last Name <span className="text-red-500">*</span>
           </label>
-          <input id="lastName" name="lastName" type="text" autoComplete="family-name" required className="w-full rounded border border-gray-300 px-3 py-3 text-black outline-none focus:border-transparent focus:ring-2 focus:ring-[#7B3434]" />
+          <input id="lastName" type="text" autoComplete="family-name" aria-invalid={Boolean(errors.lastName)} {...register('lastName')} className="w-full rounded border border-gray-300 px-3 py-3 text-black outline-none focus:border-transparent focus:ring-2 focus:ring-[#7B3434]" />
+          {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName.message}</p>}
         </div>
 
         <div className="sm:col-span-2">
           <label htmlFor="accountNumber" className="mb-1 block text-sm font-semibold text-gray-700">
             Account Number <span className="text-red-500">*</span>
           </label>
-          <input id="accountNumber" name="accountNumber" type="text" inputMode="numeric" autoComplete="off" pattern="[0-9]{10}" maxLength={10} title="Enter a valid 10-digit account number" required className="w-full rounded border border-gray-300 px-3 py-3 text-black outline-none focus:border-transparent focus:ring-2 focus:ring-[#7B3434]" />
+          <input id="accountNumber" type="text" inputMode="numeric" autoComplete="off" maxLength={10} aria-invalid={Boolean(errors.accountNumber)} {...register('accountNumber')} className="w-full rounded border border-gray-300 px-3 py-3 text-black outline-none focus:border-transparent focus:ring-2 focus:ring-[#7B3434]" />
+          {errors.accountNumber && <p className="mt-1 text-sm text-red-600">{errors.accountNumber.message}</p>}
           <p className="mt-1 text-xs text-gray-500">Enter your 10-digit UMFB account number.</p>
         </div>
 
@@ -79,13 +96,14 @@ export function AtmApplicationForm() {
           <label htmlFor="phoneNumber" className="mb-1 block text-sm font-semibold text-gray-700">
             Phone Number <span className="text-red-500">*</span>
           </label>
-          <input id="phoneNumber" name="phoneNumber" type="tel" inputMode="numeric" autoComplete="tel" pattern="[0-9]{11}" maxLength={11} title="Enter a valid 11-digit phone number" required className="w-full rounded border border-gray-300 px-3 py-3 text-black outline-none focus:border-transparent focus:ring-2 focus:ring-[#7B3434]" />
+          <input id="phoneNumber" type="tel" inputMode="numeric" autoComplete="tel" maxLength={11} aria-invalid={Boolean(errors.phoneNumber)} {...register('phoneNumber')} className="w-full rounded border border-gray-300 px-3 py-3 text-black outline-none focus:border-transparent focus:ring-2 focus:ring-[#7B3434]" />
+          {errors.phoneNumber && <p className="mt-1 text-sm text-red-600">{errors.phoneNumber.message}</p>}
           <p className="mt-1 text-xs text-gray-500">Enter your 11-digit phone number.</p>
         </div>
 
         <div className="absolute -left-[10000px]" aria-hidden="true">
           <label htmlFor="honeypot">Leave this field empty</label>
-          <input id="honeypot" name="honeypot" type="text" tabIndex={-1} autoComplete="off" />
+          <input id="honeypot" type="text" tabIndex={-1} autoComplete="off" {...register('honeypot')} />
         </div>
       </div>
 
