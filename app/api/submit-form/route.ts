@@ -5,7 +5,8 @@ import { PDFDocument as PDFLibDocument, StandardFonts, rgb } from 'pdf-lib';
 import fetch from 'node-fetch';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { atmApplicationSchema } from '@/lib/validation';
+import { atmApplicationSchema, fixedDepositSchema } from '@/lib/validation';
+import { getFixedDepositRate } from '@/lib/fixedDeposit';
 
 console.log('=== API ROUTE LOADED ===');
 console.log('Environment check:');
@@ -237,17 +238,23 @@ const atmApplicationSections = [
   { name: 'APPLICANT DETAILS', fields: ['fullName', 'accountNumber', 'phoneNumber'] },
 ];
 
+const fixedDepositSections = [
+  { name: '', fields: ['name', 'accountNumber', 'amount', 'tenor', 'interestRate'] },
+];
+
 // Determine form type
 function getFormType(data: any) {
   if (data.formType === 'corporate') return 'corporate';
   if (data.formType === 'business-loan') return 'quick-loan';
   if (data.formType === 'quick-loan') return 'quick-loan';
   if (data.formType === 'atm-application') return 'atm-application';
+  if (data.formType === 'fixed-deposit') return 'fixed-deposit';
   if (data.formType === 'personal') return 'personal';
   
   // Fallback to field detection if formType not available
   if (data.companyName || data.registrationNumber) return 'corporate';
   if (data.business_name && data.loan_amount) return 'quick-loan';
+  if (data.name && data.accountNumber && data.amount && data.tenor) return 'fixed-deposit';
   return 'personal';
 }
 
@@ -718,6 +725,7 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
     let sections;
     if (formType === 'corporate') sections = corporateSections;
     else if (formType === 'atm-application') sections = atmApplicationSections;
+    else if (formType === 'fixed-deposit') sections = fixedDepositSections;
     else sections = personalSections;
 
     const pdfDoc = await PDFLibDocument.create();
@@ -746,7 +754,7 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
       const x = 50 + indent;
       const maxWidth = width - x - 50;
 
-      if (formType === 'atm-application') {
+      if (formType === 'atm-application' || formType === 'fixed-deposit') {
         const formattedLabel = `${formatFieldName(label)}:`;
         const labelWidth = fontBold.widthOfTextAtSize(formattedLabel, labelSize);
         const requiredHeight = valueSize + 16;
@@ -865,6 +873,9 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
     } else if (formType === 'atm-application') {
       subjectLine = 'New ATM Card Application';
       formTitle = 'ATM Card Application';
+    } else if (formType === 'fixed-deposit') {
+      subjectLine = 'New Fixed Deposit Request';
+      formTitle = 'Request for Fixed Deposit';
     } else {
       subjectLine = 'New Personal Account Creation Application';
       formTitle = 'Personal Account Opening Application';
@@ -969,8 +980,10 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
 
     // Render sections (async now because image embedding is async)
     const renderSection = async (sectionName: string, sectionData: any, indent: number = 0) => {
-      drawLine(sectionName, { bold: true, size: 14, indent });
-      y -= 5;
+      if (sectionName) {
+        drawLine(sectionName, { bold: true, size: 14, indent });
+        y -= 5;
+      }
       
       for (const [key, value] of Object.entries(sectionData)) {
         if (Array.isArray(value)) {
@@ -1069,6 +1082,7 @@ export async function POST(request: NextRequest) {
     if (formType === 'corporate') sections = corporateSections;
     else if (formType === 'quick-loan') sections = businessLoanSections;
     else if (formType === 'atm-application') sections = atmApplicationSections;
+    else if (formType === 'fixed-deposit') sections = fixedDepositSections;
     else sections = personalSections;
 
     if (formType === 'atm-application') {
@@ -1082,6 +1096,25 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    if (formType === 'fixed-deposit') {
+      const validationResult = fixedDepositSchema.safeParse(parsedData);
+      if (!validationResult.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: validationResult.error.issues[0]?.message || 'Invalid fixed deposit request details.',
+          },
+          { status: 400 }
+        );
+      }
+      const interestRate = getFixedDepositRate(Number(parsedData.amount), String(parsedData.tenor));
+      if (interestRate === null) {
+        return NextResponse.json({ success: false, message: 'Minimum fixed deposit amount is ₦500,000 and a valid tenor is required.' }, { status: 400 });
+      }
+      // Always derive the rate on the server; never trust a client-provided value.
+      parsedData.interestRate = `${interestRate}% p.a.`;
     }
 
     // Log all form data (excluding files)
@@ -1120,7 +1153,7 @@ export async function POST(request: NextRequest) {
     
     // Build email content with sections
     const buildEmailSection = (sectionName: string, sectionData: any, indent: number = 0) => {
-      let content = ' '.repeat(indent) + '## ' + sectionName + '\n';
+      let content = sectionName ? ' '.repeat(indent) + '## ' + sectionName + '\n' : '';
       for (const [key, value] of Object.entries(sectionData)) {
         if (Array.isArray(value)) {
           // Check if it's an array of primitive values (strings/numbers/booleans)
@@ -1190,6 +1223,8 @@ export async function POST(request: NextRequest) {
       ? process.env.LOAN_EMAIL_TO
       : formType === 'atm-application'
         ? process.env.ATM_EMAIL_TO
+        : formType === 'fixed-deposit'
+          ? (process.env.FIXED_DEPOSIT_EMAIL_TO || process.env.EMAIL_TO)
         : process.env.EMAIL_TO;
     const recipients = recipientsEnv
       ? recipientsEnv.split(',').map(email => email.trim()).filter(email => email && email.includes('@'))
@@ -1236,6 +1271,10 @@ export async function POST(request: NextRequest) {
       emailSubject = 'New ATM Card Application - PDF';
       pdfFilename = `atm_card_application_${Date.now()}.pdf`;
       formTypeText = 'ATM card';
+    } else if (formType === 'fixed-deposit') {
+      emailSubject = 'New Fixed Deposit Request - PDF';
+      pdfFilename = `fixed_deposit_request_${Date.now()}.pdf`;
+      formTypeText = 'fixed deposit request';
     } else {
       emailSubject = 'New Personal Account Creation Application - PDF';
       pdfFilename = `personal_account_application_${Date.now()}.pdf`;

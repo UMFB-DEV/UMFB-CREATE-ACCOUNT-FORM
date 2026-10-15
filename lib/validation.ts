@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FIXED_DEPOSIT_TENORS } from './fixedDeposit';
 
 // File validation schema - Make validation more lenient
 const fileSchema = z
@@ -126,6 +127,20 @@ export const atmApplicationSchema = z.object({
   honeypot: z.string().optional(),
 });
 
+export const fixedDepositSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required'),
+  accountNumber: z.string().trim().regex(/^\d{10}$/, 'Account number must be exactly 10 digits'),
+  amount: z
+    .string()
+    .trim()
+    .regex(/^\d+(?:\.\d{1,2})?$/, 'Enter a valid amount greater than zero')
+    .refine((value) => Number(value) >= 500_000, 'Minimum fixed deposit amount is ₦500,000'),
+  tenor: z.enum(FIXED_DEPOSIT_TENORS, {
+    message: 'Please select a tenor',
+  }),
+  honeypot: z.string().optional(),
+});
+
 // Type definitions
 export type PersonalInfo = z.infer<typeof personalInfoSchema>;
 export type EmploymentInfo = z.infer<typeof employmentInfoSchema>;
@@ -134,3 +149,4 @@ export type SpouseInfo = z.infer<typeof spouseInfoSchema>;
 export type FileUploads = z.infer<typeof fileUploadsSchema>;
 export type ContactForm = z.infer<typeof contactFormSchema>;
 export type AtmApplication = z.infer<typeof atmApplicationSchema>;
+export type FixedDeposit = z.infer<typeof fixedDepositSchema>;
