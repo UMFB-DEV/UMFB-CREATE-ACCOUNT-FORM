@@ -6,7 +6,7 @@ import fetch from 'node-fetch';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { atmApplicationSchema, fixedDepositSchema } from '@/lib/validation';
-import { getFixedDepositRate } from '@/lib/fixedDeposit';
+import { formatNaira, getFixedDepositRate } from '@/lib/fixedDeposit';
 
 console.log('=== API ROUTE LOADED ===');
 console.log('Environment check:');
@@ -265,6 +265,13 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
   const formType = getFormType(parsedData);
   if (formType === 'atm-application') {
     parsedData.fullName = `${String(parsedData.firstName ?? '').trim()} ${String(parsedData.lastName ?? '').trim()}`.trim();
+  }
+  if (formType === 'fixed-deposit') {
+    const interestRate = getFixedDepositRate(Number(parsedData.amount), String(parsedData.tenor));
+    if (interestRate !== null) {
+      parsedData.amount = formatNaira(Number(parsedData.amount));
+      parsedData.interestRate = `${interestRate}%`;
+    }
   }
   console.log('=== PDF GENERATION FORM TYPE ===', formType);
 
@@ -758,6 +765,7 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
         const formattedLabel = `${formatFieldName(label)}:`;
         const labelWidth = fontBold.widthOfTextAtSize(formattedLabel, labelSize);
         const valueGap = formType === 'fixed-deposit' ? 28 : 7;
+        const valueX = formType === 'fixed-deposit' ? 230 : x + labelWidth + valueGap;
         const requiredHeight = valueSize + 16;
 
         if (y - requiredHeight < 60) {
@@ -772,14 +780,30 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
           font: fontBold,
           color: rgb(0, 0, 0),
         });
-        page.drawText(value, {
-          x: x + labelWidth + valueGap,
-          y,
-          size: valueSize,
-          font,
-          color: rgb(0, 0, 0),
-          maxWidth: maxWidth - labelWidth - valueGap,
-        });
+        if (formType === 'fixed-deposit' && value.startsWith('₦')) {
+          // The built-in PDF font cannot encode the Naira Unicode character.
+          // Draw an equivalent Naira mark before the formatted numeric value.
+          page.drawText('N', { x: valueX, y, size: valueSize, font, color: rgb(0, 0, 0) });
+          page.drawLine({ start: { x: valueX - 1, y: y + 5 }, end: { x: valueX + 9, y: y + 5 }, thickness: 0.7, color: rgb(0, 0, 0) });
+          page.drawLine({ start: { x: valueX - 1, y: y + 2 }, end: { x: valueX + 9, y: y + 2 }, thickness: 0.7, color: rgb(0, 0, 0) });
+          page.drawText(value.slice(1), {
+            x: valueX + 10,
+            y,
+            size: valueSize,
+            font,
+            color: rgb(0, 0, 0),
+            maxWidth: width - valueX - 60,
+          });
+        } else {
+          page.drawText(value, {
+            x: valueX,
+            y,
+            size: valueSize,
+            font,
+            color: rgb(0, 0, 0),
+            maxWidth: width - valueX - 50,
+          });
+        }
         y -= requiredHeight;
         return;
       }
@@ -849,7 +873,7 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
           logoImage = await pdfDoc.embedJpg(logoUint8);
         }
         
-        const logoDims = logoImage.scale(0.4);
+        const logoDims = logoImage.scale(formType === 'fixed-deposit' ? 0.3 : 0.4);
         page.drawImage(logoImage, {
           x: (width - logoDims.width) / 2, // Center the logo
           y: y - logoDims.height,
@@ -890,8 +914,10 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
  /*  drawLine(`Subject: ${subjectLine}`, { size: 10 }); */
  /*  y -= 10; */
 
-    if (formType === 'atm-application') {
-      const titleSize = 18;
+    if (formType === 'fixed-deposit') y -= 12;
+
+    if (formType === 'atm-application' || formType === 'fixed-deposit') {
+      const titleSize = formType === 'fixed-deposit' ? 16 : 18;
       const titleWidth = fontBold.widthOfTextAtSize(formTitle, titleSize);
       const titleX = (width - titleWidth) / 2;
       page.drawText(formTitle, {
@@ -909,7 +935,7 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
       });
       y -= titleSize + 6;
     } else {
-      drawLine(formTitle, { bold: true, size: 18 });
+      drawLine(formTitle, { bold: true, size: formType === 'fixed-deposit' ? 16 : 18 });
     }
     y -= 10;
 
@@ -1115,6 +1141,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, message: 'Minimum fixed deposit amount is ₦500,000 and a valid tenor is required.' }, { status: 400 });
       }
       // Always derive the rate on the server; never trust a client-provided value.
+      parsedData.amount = formatNaira(Number(parsedData.amount));
       parsedData.interestRate = `${interestRate}%`;
     }
 
