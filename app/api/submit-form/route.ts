@@ -935,7 +935,7 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
       });
       y -= titleSize + 6;
     } else {
-      drawLine(formTitle, { bold: true, size: formType === 'fixed-deposit' ? 16 : 18 });
+      drawLine(formTitle, { bold: true, size: 18 });
     }
     y -= 10;
 
