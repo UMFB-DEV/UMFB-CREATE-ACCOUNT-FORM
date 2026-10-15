@@ -757,6 +757,7 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
       if (formType === 'atm-application' || formType === 'fixed-deposit') {
         const formattedLabel = `${formatFieldName(label)}:`;
         const labelWidth = fontBold.widthOfTextAtSize(formattedLabel, labelSize);
+        const valueGap = formType === 'fixed-deposit' ? 28 : 7;
         const requiredHeight = valueSize + 16;
 
         if (y - requiredHeight < 60) {
@@ -772,12 +773,12 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
           color: rgb(0, 0, 0),
         });
         page.drawText(value, {
-          x: x + labelWidth + 7,
+          x: x + labelWidth + valueGap,
           y,
           size: valueSize,
           font,
           color: rgb(0, 0, 0),
-          maxWidth: maxWidth - labelWidth - 7,
+          maxWidth: maxWidth - labelWidth - valueGap,
         });
         y -= requiredHeight;
         return;
@@ -882,7 +883,7 @@ async function createApplicationPDF(formData: FormData): Promise<Buffer> {
     }
 
     /* drawLine('From: Unilag Microfinance Bank <info@unilagmfbank.com>', { bold: true }); */
-    if (formType !== 'atm-application') {
+    if (formType !== 'atm-application' && formType !== 'fixed-deposit') {
       drawLine(`Sent: ${new Date().toLocaleString()}`, { size: 10 });
     }
     /* drawLine('To: Unilag Microfinance Bank <accountopening@unilagmfbank.com>', { size: 10 }); */
@@ -1114,7 +1115,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, message: 'Minimum fixed deposit amount is ₦500,000 and a valid tenor is required.' }, { status: 400 });
       }
       // Always derive the rate on the server; never trust a client-provided value.
-      parsedData.interestRate = `${interestRate}% p.a.`;
+      parsedData.interestRate = `${interestRate}%`;
     }
 
     // Log all form data (excluding files)
