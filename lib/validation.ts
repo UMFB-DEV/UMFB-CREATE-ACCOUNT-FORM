@@ -98,7 +98,7 @@ export const fileUploadsSchema = z.object({
   idDocument: documentFileSchema,
   passportPhoto: imageFileSchema,
   signature: imageFileSchema,
-  utilityBill: documentFileSchema,
+  utilityBill: documentFileSchema.optional(),
 });
 
 // Complete form schema

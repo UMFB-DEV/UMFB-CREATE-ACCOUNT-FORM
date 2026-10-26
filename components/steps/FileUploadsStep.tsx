@@ -232,7 +232,7 @@ export function FileUploadsStep({ form }: FileUploadsStepProps) {
         {/* Utility Bill */}
         <div>
           <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Utility Bill *
+            Utility Bill <span className="font-normal text-gray-500">(Optional)</span>
           </label>
           <div className="space-y-3">
             <div className="relative">
