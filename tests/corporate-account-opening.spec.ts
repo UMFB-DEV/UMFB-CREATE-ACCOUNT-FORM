@@ -73,10 +73,10 @@ test('fills every field in the corporate account form and submits it', async ({ 
 
   await page.goto('/cooperate-account-opening');
 
-  for (let step = 1; step <= 8; step += 1) {
+  for (let step = 1; step <= 9; step += 1) {
     await fillCurrentStep(page);
 
-    if (step === 8) {
+    if (step === 9) {
       const downloadLink = page.getByRole('link', { name: 'Download Reference Form Template' });
       await expect(downloadLink).toHaveAttribute('href', '/Referee_Form.pdf');
       const [download] = await Promise.all([
@@ -86,9 +86,9 @@ test('fills every field in the corporate account form and submits it', async ({ 
       expect(download.suggestedFilename()).toBe('Referee_Form.pdf');
     }
 
-    if (step < 8) {
+    if (step < 9) {
       await page.getByRole('button', { name: 'Next' }).click();
-      await expect(page.getByText(`Step ${step + 1} of 8`)).toBeVisible();
+      await expect(page.getByText(`Step ${step + 1} of 9`)).toBeVisible();
     }
   }
 

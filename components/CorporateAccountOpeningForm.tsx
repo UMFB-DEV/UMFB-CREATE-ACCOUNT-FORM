@@ -124,6 +124,12 @@ const initialFormData = {
       idNumber: '',
       idExpiryDate: '',
       relationshipToCompany: '',
+      gender: '',
+      bvn: '',
+      cityTown: '',
+      lga: '',
+      state: '',
+      ownershipStatus: '',
       specimenSignature: null as File | null,
       actualSignature: null as File | null,
       passportPhoto: null as File | null,
@@ -192,6 +198,37 @@ const initialFormData = {
   declarationSecretarySignature: null as File | null,
   declarationAgreeTerms: false,
   referenceForm: null as File | null,
+  // Company-level account services preferences (rendered on the Company Details step).
+  debitCardRequired: '',
+  electronicBankingPreference: '',
+  transactionAlertPreference: '',
+  // Structured "Details of a Sole Proprietor" data, nested so the PDF/email can render
+  // each subsection (personal / contact / identification / next of kin) as its own group.
+  soleProprietorDetail: {
+    personalInfo: {
+      surname: '', firstName: '', otherNames: '', motherMaidenName: '', dateOfBirth: '',
+      gender: '', title: '', placeOfBirth: '', maritalStatus: '', nationality: '',
+      residencePermitNumber: '', permitIssueDate: '', permitExpiryDate: '', stateOfOrigin: '',
+      lga: '', taxId: '', religion: '', purposeOfAccount: '',
+    },
+    contactDetails: {
+      residentialAddress: {
+        houseNumber: '', streetName: '', nearestBusStop: '', cityTown: '', lga: '', state: '',
+        ownershipStatus: '',
+      },
+      emailAddress: '',
+      phoneNumber: '',
+    },
+    meansOfIdentification: {
+      idType: '', idTypeOther: '', idNumber: '', idIssueDate: '', bvn: '', idExpiryDate: '',
+    },
+    nextOfKin: {
+      surname: '', firstName: '', otherNames: '', motherMaidenName: '', dateOfBirth: '',
+      gender: '', title: '', placeOfBirth: '', maritalStatus: '', nationality: '',
+      residencePermitNumber: '', permitIssueDate: '', permitExpiryDate: '', stateOfOrigin: '',
+      lga: '', taxId: '', religion: '', purposeOfAccount: '',
+    },
+  },
 };
 
 const serviceOptions = [
@@ -247,6 +284,98 @@ const signatoryCategoryOptions = [
   { value: 'joint', label: 'Joint Signatory' },
   { value: 'anyone', label: 'Any One to Sign' },
   { value: 'mandate', label: 'Mandate' },
+];
+
+const genderOptions = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other' },
+];
+
+const titleOptions = [
+  { value: 'mr', label: 'Mr' },
+  { value: 'mrs', label: 'Mrs' },
+  { value: 'miss', label: 'Miss' },
+  { value: 'dr', label: 'Dr' },
+  { value: 'prof', label: 'Prof' },
+];
+
+const maritalStatusOptions = [
+  { value: 'single', label: 'Single' },
+  { value: 'married', label: 'Married' },
+  { value: 'other', label: 'Other' },
+];
+
+const ownershipStatusOptions = [
+  { value: 'owned', label: 'Owned' },
+  { value: 'rented', label: 'Rented' },
+  { value: 'family_house', label: 'Family House' },
+];
+
+const identificationTypeOptions = [
+  { value: 'national_id', label: 'National ID Card' },
+  { value: 'drivers_license', label: "National Driver's License" },
+  { value: 'international_passport', label: 'International Passport' },
+  { value: 'inec_voter', label: "INEC Voter's Card" },
+  { value: 'others', label: 'Others (please specify)' },
+];
+
+const electronicBankingOptions = [
+  { value: 'mobile_app', label: 'Mobile App' },
+  { value: 'internet_banking', label: 'Internet Banking' },
+];
+
+const transactionAlertOptions = [
+  { value: 'email_alert', label: 'Email Alert' },
+  { value: 'sms_alert', label: 'SMS Alert' },
+];
+
+// Describes a single field so repeated grids (personal info / next of kin) can be
+// rendered from one list instead of hand-writing every input twice.
+type FieldDescriptor = {
+  name: string;
+  label: string;
+  type?: string;
+  options?: { value: string; label: string }[];
+  required?: boolean;
+};
+
+const residentialAddressFields: FieldDescriptor[] = [
+  { name: 'houseNumber', label: 'House Number', required: true },
+  { name: 'streetName', label: 'Street Name', required: true },
+  { name: 'nearestBusStop', label: 'Nearest Bus Stop / Landmark', required: true },
+  { name: 'cityTown', label: 'City / Town', required: true },
+  { name: 'lga', label: 'L.G.A', required: true },
+  { name: 'state', label: 'State', required: true },
+  { name: 'ownershipStatus', label: 'Ownership Status', type: 'select', options: ownershipStatusOptions, required: true },
+];
+
+const personalDetailFields: FieldDescriptor[] = [
+  { name: 'surname', label: 'Surname', required: true },
+  { name: 'firstName', label: 'First Name', required: true },
+  { name: 'otherNames', label: 'Other Names' },
+  { name: 'motherMaidenName', label: "Mother's Maiden Name", required: true },
+  { name: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: true },
+  { name: 'gender', label: 'Gender', type: 'select', options: genderOptions, required: true },
+  { name: 'title', label: 'Title', type: 'select', options: titleOptions, required: true },
+  { name: 'placeOfBirth', label: 'Place of Birth', required: true },
+  { name: 'maritalStatus', label: 'Marital Status', type: 'select', options: maritalStatusOptions, required: true },
+  { name: 'nationality', label: 'Nationality', required: true },
+  { name: 'residencePermitNumber', label: 'Residence Permit Number' },
+  { name: 'permitIssueDate', label: 'Permit Issue Date', type: 'date' },
+  { name: 'permitExpiryDate', label: 'Permit Expiry Date', type: 'date' },
+  { name: 'stateOfOrigin', label: 'State of Origin', required: true },
+  { name: 'lga', label: 'L.G.A', required: true },
+  { name: 'taxId', label: 'Tax ID' },
+  { name: 'religion', label: 'Religion' },
+  { name: 'purposeOfAccount', label: 'Purpose of Account', required: true },
+];
+
+const meansOfIdentificationFields: FieldDescriptor[] = [
+  { name: 'idNumber', label: 'ID Number', required: true },
+  { name: 'idIssueDate', label: 'ID Issue Date', type: 'date', required: true },
+  { name: 'bvn', label: 'BVN', type: 'text', required: true },
+  { name: 'idExpiryDate', label: 'ID Expiry Date', type: 'date', required: true },
 ];
 
 const InputRow = memo(function InputRow({
@@ -1189,6 +1318,100 @@ const CompanyDetailsSection = memo(function CompanyDetailsSection({ formData, up
         <InputRow label="Website (if any)" name="website" value={formData.website} placeholder="Enter website URL" type="url" onChange={updateField} />
         <InputRow label="Tax Identification Number (TIN)" name="taxIdentificationNumber" value={formData.taxIdentificationNumber} placeholder="Enter TIN" onChange={updateField} />
         <SelectRow label="Type of Company" name="companyType" value={formData.companyType} options={companyTypeOptions} required onChange={updateField} />
+        <div className="lg:col-span-2">
+          <TextAreaRow label="Purpose of Account" name="accountPurpose" value={formData.accountPurpose} required placeholder="State the purpose for which the account is being opened" rows={2} onChange={updateField} />
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-3xl border border-gray-200 bg-[#fafafa] p-6">
+        <h3 className="text-lg font-semibold text-[#7B3434]">ACCOUNT SERVICE(S) REQUIRED</h3>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <SelectRow label="Debit Card (fees apply)" name="debitCardRequired" value={formData.debitCardRequired} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} required onChange={updateField} />
+          <SelectRow label="Electronic Banking Preference" name="electronicBankingPreference" value={formData.electronicBankingPreference} options={electronicBankingOptions} required onChange={updateField} />
+          <SelectRow label="Transaction Alert Preference" name="transactionAlertPreference" value={formData.transactionAlertPreference} options={transactionAlertOptions} required onChange={updateField} />
+        </div>
+      </div>
+    </section>
+  );
+});
+
+// Renders a grid of fields from a descriptor list. Personal Information and Next of
+// Kin share the exact same shape, so both reuse this instead of duplicating ~18 inputs.
+const FieldGrid = ({ fields, values, onChange }: {
+  fields: FieldDescriptor[];
+  values: Record<string, string>;
+  onChange: (name: string, value: string) => void;
+}) => (
+  <div className="grid gap-6 lg:grid-cols-2">
+    {fields.map((field) =>
+      field.type === 'select' ? (
+        <SelectRow
+          key={field.name}
+          label={field.label}
+          name={field.name}
+          value={values[field.name]}
+          options={field.options ?? []}
+          required={field.required}
+          onChange={onChange}
+        />
+      ) : (
+        <InputRow
+          key={field.name}
+          label={field.label}
+          name={field.name}
+          value={values[field.name]}
+          type={field.type}
+          required={field.required}
+          placeholder={`Enter ${field.label.toLowerCase()}`}
+          onChange={onChange}
+        />
+      )
+    )}
+  </div>
+);
+
+const SoleProprietorDetailSection = memo(function SoleProprietorDetailSection({ formData, updateNestedField }: any) {
+  const sp = formData.soleProprietorDetail;
+  // Binds a leaf field name to its full path inside the nested sole proprietor object.
+  const bind = (path: string[]) => (name: string, value: string) => updateNestedField([...path, name], value);
+
+  return (
+    <section className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold text-[#7B3434]">DETAILS OF A SOLE PROPRIETOR</h2>
+      </div>
+
+      <div className="space-y-4 rounded-3xl border border-gray-200 bg-[#fafafa] p-6">
+        <h3 className="text-lg font-semibold text-[#7B3434]">A. PERSONAL INFORMATION</h3>
+        <FieldGrid fields={personalDetailFields} values={sp.personalInfo} onChange={bind(['soleProprietorDetail', 'personalInfo'])} />
+      </div>
+
+      <div className="space-y-6 rounded-3xl border border-gray-200 bg-[#fafafa] p-6">
+        <h3 className="text-lg font-semibold text-[#7B3434]">B. CONTACT DETAILS</h3>
+        <div className="space-y-4">
+          <h4 className="font-semibold text-sm text-gray-700">Residential Address</h4>
+          <FieldGrid fields={residentialAddressFields} values={sp.contactDetails.residentialAddress} onChange={bind(['soleProprietorDetail', 'contactDetails', 'residentialAddress'])} />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <InputRow label="Email Address" name="emailAddress" value={sp.contactDetails.emailAddress} required placeholder="Enter email address" type="email" onChange={bind(['soleProprietorDetail', 'contactDetails'])} />
+          <InputRow label="Phone Number" name="phoneNumber" value={sp.contactDetails.phoneNumber} required placeholder="Enter phone number" type="tel" onChange={bind(['soleProprietorDetail', 'contactDetails'])} />
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-3xl border border-gray-200 bg-[#fafafa] p-6">
+        <h3 className="text-lg font-semibold text-[#7B3434]">C. MEANS OF IDENTIFICATION</h3>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <SelectRow label="Identification Type" name="idType" value={sp.meansOfIdentification.idType} options={identificationTypeOptions} required onChange={bind(['soleProprietorDetail', 'meansOfIdentification'])} />
+          {sp.meansOfIdentification.idType === 'others' && (
+            <InputRow label="Others (please specify)" name="idTypeOther" value={sp.meansOfIdentification.idTypeOther} required placeholder="Specify identification type" onChange={bind(['soleProprietorDetail', 'meansOfIdentification'])} />
+          )}
+        </div>
+        <FieldGrid fields={meansOfIdentificationFields} values={sp.meansOfIdentification} onChange={bind(['soleProprietorDetail', 'meansOfIdentification'])} />
+      </div>
+
+      <div className="space-y-4 rounded-3xl border border-gray-200 bg-[#fafafa] p-6">
+        <h3 className="text-lg font-semibold text-[#7B3434]">D. DETAILS OF NEXT OF KIN</h3>
+        <FieldGrid fields={personalDetailFields} values={sp.nextOfKin} onChange={bind(['soleProprietorDetail', 'nextOfKin'])} />
       </div>
     </section>
   );
@@ -1425,12 +1648,19 @@ const AccountSignatoryDetailsSection = memo(function AccountSignatoryDetailsSect
             <InputRow label="Full Name" name="name" value={signatory.name} required placeholder="Enter full name" onChange={(name, value) => updateArrayItem('accountSignatories', index, 'name', value)} />
             <InputRow label="Date of Birth" name="dateOfBirth" value={signatory.dateOfBirth} required type="date" onChange={(name, value) => updateArrayItem('accountSignatories', index, 'dateOfBirth', value)} />
             <InputRow label="Nationality" name="nationality" value={signatory.nationality} required placeholder="Enter nationality" onChange={(name, value) => updateArrayItem('accountSignatories', index, 'nationality', value)} />
+            <SelectRow label="Gender" name="gender" value={signatory.gender} options={genderOptions} required onChange={(name, value) => updateArrayItem('accountSignatories', index, 'gender', value)} />
             <InputRow label="Occupation" name="occupation" value={signatory.occupation} required placeholder="Enter occupation" onChange={(name, value) => updateArrayItem('accountSignatories', index, 'occupation', value)} />
             <div className="lg:col-span-2">
-              <TextAreaRow label="Residential Address" name="address" value={signatory.address} required placeholder="Enter residential address" rows={3} onChange={(name, value) => updateArrayItem('accountSignatories', index, 'address', value)} />
+              <h4 className="mb-3 text-sm font-semibold text-gray-700">Residential Address</h4>
+              <TextAreaRow label="House Number / Street Address" name="address" value={signatory.address} required placeholder="Enter residential address" rows={2} onChange={(name, value) => updateArrayItem('accountSignatories', index, 'address', value)} />
             </div>
+            <InputRow label="City / Town" name="cityTown" value={signatory.cityTown} required placeholder="Enter city / town" onChange={(name, value) => updateArrayItem('accountSignatories', index, 'cityTown', value)} />
+            <InputRow label="L.G.A" name="lga" value={signatory.lga} required placeholder="Enter local government area" onChange={(name, value) => updateArrayItem('accountSignatories', index, 'lga', value)} />
+            <InputRow label="State" name="state" value={signatory.state} required placeholder="Enter state" onChange={(name, value) => updateArrayItem('accountSignatories', index, 'state', value)} />
+            <SelectRow label="Ownership Status" name="ownershipStatus" value={signatory.ownershipStatus} options={ownershipStatusOptions} required onChange={(name, value) => updateArrayItem('accountSignatories', index, 'ownershipStatus', value)} />
             <InputRow label="Phone Number" name="phone" value={signatory.phone} required placeholder="Enter phone number" type="tel" onChange={(name, value) => updateArrayItem('accountSignatories', index, 'phone', value)} />
             <InputRow label="Email Address" name="email" value={signatory.email} required placeholder="Enter email address" type="email" onChange={(name, value) => updateArrayItem('accountSignatories', index, 'email', value)} />
+            <InputRow label="BVN" name="bvn" value={signatory.bvn} required placeholder="Enter 11-digit BVN" type="text" onChange={(name, value) => updateArrayItem('accountSignatories', index, 'bvn', value)} />
             <SelectRow label="Identification Type" name="idType" value={signatory.idType} options={idTypeOptions} required onChange={(name, value) => updateArrayItem('accountSignatories', index, 'idType', value)} />
             <InputRow label="ID Number" name="idNumber" value={signatory.idNumber} required placeholder="Enter ID number" onChange={(name, value) => updateArrayItem('accountSignatories', index, 'idNumber', value)} />
             <InputRow label="ID Expiry Date" name="idExpiryDate" value={signatory.idExpiryDate} required type="date" onChange={(name, value) => updateArrayItem('accountSignatories', index, 'idExpiryDate', value)} />
@@ -1529,6 +1759,12 @@ const AccountSignatoryDetailsSection = memo(function AccountSignatoryDetailsSect
           idNumber: '',
           idExpiryDate: '',
           relationshipToCompany: '',
+          gender: '',
+          bvn: '',
+          cityTown: '',
+          lga: '',
+          state: '',
+          ownershipStatus: '',
           specimenSignature: null,
           actualSignature: null,
           passportPhoto: null,
@@ -2190,6 +2426,20 @@ export function CorporateAccountOpeningForm() {
     setFormData((prev: any) => ({ ...prev, [name]: value }));
   }, []);
 
+  // Updates a value nested by path, e.g. ['soleProprietorDetail', 'personalInfo', 'surname'].
+  const updateNestedField = useCallback((path: string[], value: any) => {
+    setFormData((prev: any) => {
+      const next = { ...prev };
+      let cursor = next;
+      for (let i = 0; i < path.length - 1; i += 1) {
+        cursor[path[i]] = { ...cursor[path[i]] };
+        cursor = cursor[path[i]];
+      }
+      cursor[path[path.length - 1]] = value;
+      return next;
+    });
+  }, []);
+
   const updateArrayItem = useCallback((section: string, index: number, field: string, value: any) => {
     setFormData((prev: any) => {
       const updatedItems = [...prev[section]];
@@ -2219,12 +2469,13 @@ export function CorporateAccountOpeningForm() {
   const steps = [
     { id: 1, title: 'Address Verification & Authentication' },
     { id: 2, title: 'Company Details' },
-    { id: 3, title: 'Board Resolution' },
-    { id: 4, title: 'Signatory Details' },
-    { id: 5, title: 'Directors Details' },
-    { id: 6, title: 'Other Bank Accounts' },
-    { id: 7, title: 'Declaration' },
-    { id: 8, title: 'Reference Form' },
+    { id: 3, title: 'Details of a Sole Proprietor' },
+    { id: 4, title: 'Board Resolution' },
+    { id: 5, title: 'Signatory Details' },
+    { id: 6, title: 'Directors Details' },
+    { id: 7, title: 'Other Bank Accounts' },
+    { id: 8, title: 'Declaration' },
+    { id: 9, title: 'Reference Form' },
   ];
 
   const nextStep = () => {
@@ -2309,16 +2560,18 @@ export function CorporateAccountOpeningForm() {
       case 2:
         return <CompanyDetailsSection formData={formData} updateField={updateField} />;
       case 3:
-        return <BoardResolutionSection formData={formData} updateField={updateField} updateArrayItem={updateArrayItem} />;
+        return <SoleProprietorDetailSection formData={formData} updateNestedField={updateNestedField} />;
       case 4:
-        return <AccountSignatoryDetailsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
+        return <BoardResolutionSection formData={formData} updateField={updateField} updateArrayItem={updateArrayItem} />;
       case 5:
-        return <DirectorsDetailsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
+        return <AccountSignatoryDetailsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
       case 6:
-        return <OtherBankAccountsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
+        return <DirectorsDetailsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
       case 7:
-        return <DeclarationSection formData={formData} updateField={updateField} />;
+        return <OtherBankAccountsSection formData={formData} updateArrayItem={updateArrayItem} addArrayItem={addArrayItem} removeArrayItem={removeArrayItem} />;
       case 8:
+        return <DeclarationSection formData={formData} updateField={updateField} />;
+      case 9:
         return <ReferenceFormSection formData={formData} updateField={updateField} />;
       default:
         return null;

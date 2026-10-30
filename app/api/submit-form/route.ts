@@ -18,7 +18,10 @@ console.log('- EMAIL_TO:', process.env.EMAIL_TO || 'NOT SET');
 dotenv.config();
 
 const IS_DEV = process.env.NODE_ENV !== 'production';
-const EMAIL_SEND_TIMEOUT_MS = 15000;
+const configuredEmailTimeout = Number.parseInt(process.env.EMAIL_SEND_TIMEOUT_MS || '', 10);
+const EMAIL_SEND_TIMEOUT_MS = Number.isFinite(configuredEmailTimeout) && configuredEmailTimeout > 0
+  ? configuredEmailTimeout
+  : 45000;
 
 // Create email transporter with fallback
 const createTransporter = () => {
@@ -177,6 +180,38 @@ const fieldLabels: Record<string, string> = {
   accountNumber: 'Account Number',
   fullName: 'Full Name',
   status: 'Status',
+  // New corporate fields (purpose, services, sole proprietor, expanded address/signatory data).
+  accountPurpose: 'Purpose of Account',
+  debitCardRequired: 'Debit Card (Fees Apply)',
+  electronicBankingPreference: 'Electronic Banking Preference',
+  transactionAlertPreference: 'Transaction Alert Preference',
+  soleProprietorDetail: 'Sole Proprietor Details',
+  personalInfo: 'Personal Information',
+  contactDetails: 'Contact Details',
+  residentialAddress: 'Residential Address',
+  meansOfIdentification: 'Means of Identification',
+  nextOfKin: 'Next of Kin',
+  surname: 'Surname',
+  firstName: 'First Name',
+  otherNames: 'Other Names',
+  motherMaidenName: "Mother's Maiden Name",
+  residencePermitNumber: 'Residence Permit Number',
+  permitIssueDate: 'Permit Issue Date',
+  permitExpiryDate: 'Permit Expiry Date',
+  taxId: 'Tax ID',
+  religion: 'Religion',
+  purposeOfAccount: 'Purpose of Account',
+  houseNumber: 'House Number',
+  streetName: 'Street Name',
+  nearestBusStop: 'Nearest Bus Stop / Landmark',
+  cityTown: 'City / Town',
+  lga: 'L.G.A',
+  state: 'State',
+  ownershipStatus: 'Ownership Status',
+  idTypeOther: 'Others (please specify)',
+  idIssueDate: 'ID Issue Date',
+  bvn: 'BVN',
+  gender: 'Gender',
 };
 
 function readableKey(key: string): string {
@@ -205,13 +240,14 @@ const corporateSections = [
   { name: '1. ADDRESS VERIFICATION', fields: ['accountOfficer', 'verifiedAddress2'] },
   { name: '2. FINANCIAL INCLUSION', fields: ['hasSociallyFinanciallyDisadvantagedDirector', 'disadvantagedCustomerDocuments', 'enjoysTieredKyc', 'tieredKycRiskCategory'] },
   { name: '3. PEP/FEP CHECK', fields: ['isApplicantPoliticallyExposed', 'isApplicantFinanciallyExposed'] },
-  { name: '4. COMPANY DETAILS', fields: ['companyName', 'accountType', 'registrationNumber', 'dateOfIncorporation', 'registeredOfficeAddress', 'natureOfBusiness', 'phoneNumber', 'emailAddress', 'website', 'taxIdentificationNumber', 'businessAddress', 'businessPhone', 'businessEmail', 'companyType'] },
-  { name: '5. BOARD RESOLUTION', fields: ['boardResolutionMeetingDate', 'boardResolutionCompanyName', 'boardResolutionCompanySecretary', 'boardResolutionMandate', 'boardResolutionDirectors', 'boardResolutionSignatories'] },
-  { name: '6. ACCOUNT SIGNATORY DETAILS', fields: ['accountSignatories'] },
-  { name: '7. DIRECTORS/EXECUTIVES DETAILS', fields: ['directorsDetails'] },
-  { name: '8. OTHER BANK ACCOUNTS', fields: ['otherBankAccounts'] },
-  { name: '9. DECLARATION', fields: ['declarationCompanyName', 'declarationDate', 'declarationDirectorName', 'declarationDirectorSignature', 'declarationSecretaryName', 'declarationSecretarySignature', 'declarationAgreeTerms'] },
-  { name: '10. REFERENCE FORM', fields: ['referenceForm'] },
+  { name: '4. COMPANY DETAILS', fields: ['companyName', 'accountType', 'registrationNumber', 'dateOfIncorporation', 'registeredOfficeAddress', 'natureOfBusiness', 'phoneNumber', 'emailAddress', 'website', 'taxIdentificationNumber', 'businessAddress', 'businessPhone', 'businessEmail', 'companyType', 'accountPurpose', 'debitCardRequired', 'electronicBankingPreference', 'transactionAlertPreference'] },
+  { name: '5. DETAILS OF A SOLE PROPRIETOR', fields: ['soleProprietorDetail'] },
+  { name: '6. BOARD RESOLUTION', fields: ['boardResolutionMeetingDate', 'boardResolutionCompanyName', 'boardResolutionCompanySecretary', 'boardResolutionMandate', 'boardResolutionDirectors', 'boardResolutionSignatories'] },
+  { name: '7. ACCOUNT SIGNATORY DETAILS', fields: ['accountSignatories'] },
+  { name: '8. DIRECTORS/EXECUTIVES DETAILS', fields: ['directorsDetails'] },
+  { name: '9. OTHER BANK ACCOUNTS', fields: ['otherBankAccounts'] },
+  { name: '10. DECLARATION', fields: ['declarationCompanyName', 'declarationDate', 'declarationDirectorName', 'declarationDirectorSignature', 'declarationSecretaryName', 'declarationSecretarySignature', 'declarationAgreeTerms'] },
+  { name: '11. REFERENCE FORM', fields: ['referenceForm'] },
 ];
 
 // Personal form sections
@@ -1346,7 +1382,14 @@ export async function POST(request: NextRequest) {
       console.log('Recipients:', recipients.join(', '));
     } catch (emailError) {
       console.error('Email delivery failed or timed out:', emailError);
-      console.warn('Continuing with success response so the form submission is not blocked by email delivery issues.');
+      transporter.close();
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Your application could not be delivered by email. Please try again later.',
+        },
+        { status: 503 }
+      );
     }
 
     console.log('=== FORM SUBMISSION COMPLETED SUCCESSFULLY ===');
