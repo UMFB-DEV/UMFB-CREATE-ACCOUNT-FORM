@@ -24,21 +24,15 @@ const documentFileSchema = fileSchema.refine(
 // Step 1: Personal Information Schema
 export const personalInfoSchema = z.object({
   accountType: z.enum([
-    'CORPORATE CURRENT ACCOUNT',
     'DAILY SAVINGS ACCOUNT',
-    'GROUP SAVINGS ACCOUNT',
     'JOLLY BOUNTY',
     'JOLLY FLEX',
     'JOLLY SUPER',
-    'LOAN EQUITY CONTRIBUTION-MANDATORY ACCOUNT',
-    'MUTUAL FUNDS INVESTMENT ACCOUNT',
     'MYGOAL TARGET SAVINGS',
     'MYumbrella TERGET SAVINGS ACCOUNT',
-    'PRESTIGE TARGET SAVINGS QR-CODE SAVINGS ACCOUNT',
     'REGULAR SAVINGS ACCOUNT',
     'SME FLEX ACCOUNT',
-    'STAFF CURRENT ACCOUNT',
-    'STAFF SAVINGS ACCOUNT'
+    'DLI school fees support (DSS)'
   ], {
     message: 'Please select an account type',
   }),

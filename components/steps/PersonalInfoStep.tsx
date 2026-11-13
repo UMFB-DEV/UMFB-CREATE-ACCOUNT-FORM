@@ -26,33 +26,21 @@ export function PersonalInfoStep({ form }: PersonalInfoStepProps) {
             <option value="" disabled>
               Select an account type
             </option>
-            <option value="CORPORATE CURRENT ACCOUNT">
-              CORPORATE CURRENT ACCOUNT
-            </option>
             <option value="DAILY SAVINGS ACCOUNT">DAILY SAVINGS ACCOUNT</option>
-            <option value="GROUP SAVINGS ACCOUNT">GROUP SAVINGS ACCOUNT</option>
             <option value="JOLLY BOUNTY">JOLLY BOUNTY</option>
             <option value="JOLLY FLEX">JOLLY FLEX</option>
             <option value="JOLLY SUPER">JOLLY SUPER</option>
-            <option value="LOAN EQUITY CONTRIBUTION-MANDATORY ACCOUNT">
-              LOAN EQUITY CONTRIBUTION-MANDATORY ACCOUNT
-            </option>
-            <option value="MUTUAL FUNDS INVESTMENT ACCOUNT">
-              MUTUAL FUNDS INVESTMENT ACCOUNT
-            </option>
             <option value="MYGOAL TARGET SAVINGS">MYGOAL TARGET SAVINGS</option>
             <option value="MYumbrella TERGET SAVINGS ACCOUNT">
               MYumbrella TERGET SAVINGS ACCOUNT
-            </option>
-            <option value="PRESTIGE TARGET SAVINGS QR-CODE SAVINGS ACCOUNT">
-              PRESTIGE TARGET SAVINGS QR-CODE SAVINGS ACCOUNT
             </option>
             <option value="REGULAR SAVINGS ACCOUNT">
               REGULAR SAVINGS ACCOUNT
             </option>
             <option value="SME FLEX ACCOUNT">SME FLEX ACCOUNT</option>
-            <option value="STAFF CURRENT ACCOUNT">STAFF CURRENT ACCOUNT</option>
-            <option value="STAFF SAVINGS ACCOUNT">STAFF SAVINGS ACCOUNT</option>
+            <option value="DLI school fees support (DSS)">
+              DLI school fees support (DSS)
+            </option>
           </select>
           {errors.accountType && (
             <p className="mt-1 text-sm text-red-600 font-medium">
