@@ -32,7 +32,7 @@ export const personalInfoSchema = z.object({
     'MYumbrella TERGET SAVINGS ACCOUNT',
     'REGULAR SAVINGS ACCOUNT',
     'SME FLEX ACCOUNT',
-    'DLI school fees support (DSS)'
+    'DLI School Fees Support (DSS)'
   ], {
     message: 'Please select an account type',
   }),

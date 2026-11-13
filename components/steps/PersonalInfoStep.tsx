@@ -38,8 +38,8 @@ export function PersonalInfoStep({ form }: PersonalInfoStepProps) {
               REGULAR SAVINGS ACCOUNT
             </option>
             <option value="SME FLEX ACCOUNT">SME FLEX ACCOUNT</option>
-            <option value="DLI school fees support (DSS)">
-              DLI school fees support (DSS)
+            <option value="DLI School Fees Support (DSS)">
+              DLI School Fees Support (DSS)
             </option>
           </select>
           {errors.accountType && (
